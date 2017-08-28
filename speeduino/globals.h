@@ -44,6 +44,10 @@
 #define MS_IN_MINUTE 60000
 #define US_IN_MINUTE 60000000
 
+//Define the load algorithm
+#define LOAD_SOURCE_MAP         0
+#define LOAD_SOURCE_TPS         1
+
 //Define bit positions within engine virable
 #define BIT_ENGINE_RUN      0   // Engine running
 #define BIT_ENGINE_CRANK    1   // Engine cranking
@@ -104,6 +108,11 @@
 #define IGN_MODE_SINGLE     1
 #define IGN_MODE_WASTEDCOP  2
 #define IGN_MODE_SEQUENTIAL 3
+#define IGN_MODE_ROTARY     4
+
+#define ROTARY_IGN_FC       0
+#define ROTARY_IGN_FD       1
+#define ROTARY_IGN_RX8      2
 
 #define SIZE_BYTE   8
 #define SIZE_INT    16
@@ -156,6 +165,7 @@ struct table2D dwellVCorrectionTable; //6 bin dwell voltage correction (2D)
 struct table2D injectorVCorrectionTable; //6 bin injector voltage correction (2D)
 struct table2D IATDensityCorrectionTable; //9 bin inlet air temperature density correction (2D)
 struct table2D IATRetardTable; //6 bin ignition adjustment based on inlet air temperature  (2D)
+struct table2D rotarySplitTable; //8 bin ignition split curve for rotary leading/trailing  (2D)
 
 //These are for the direct port manipulation of the injectors and coils
 volatile byte *inj1_pin_port;
@@ -269,7 +279,7 @@ struct statuses {
   uint16_t freeRAM;
   unsigned int clutchEngagedRPM;
   bool flatShiftingHard;
-  volatile byte startRevolutions; //A counter for how many revolutions have been completed since sync was achieved.
+  volatile uint16_t startRevolutions; //A counter for how many revolutions have been completed since sync was achieved.
   byte boostTarget;
   byte testOutputs;
   bool testActive;
@@ -277,6 +287,7 @@ struct statuses {
   byte idleLoad; //Either the current steps or current duty cycle for the idle control.
   uint16_t canin[16];   //16bit raw value of selected canin data for channel 0-15
   uint8_t current_caninchannel = 0; //start off at channel 0
+  uint16_t crankRPM = 400; //The actual cranking RPM limit. Saves us multiplying it everytime from the config page
 
   //Helpful bitwise operations:
   //Useful reference: http://playground.arduino.cc/Code/BitMath
@@ -349,7 +360,7 @@ struct config1 {
   byte baroCorr : 1;
   byte injLayout : 2;
   byte perToothIgn : 1;
-  byte unused2_38h : 1;
+  byte dfcoEnabled : 1; //Whether or not DFCO is turned on
 
   byte primePulse;
   byte dutyLim;
@@ -408,8 +419,7 @@ struct config2 {
 
   byte dwellCont : 1; //Fixed duty dwell control
   byte useDwellLim : 1; //Whether the dwell limiter is off or on
-  byte sparkMode : 2; //Spark output mode (Eg Wasted spark, single channel or Wasted COP)
-  byte dfcoEnabled : 1; //Whether or not DFCO is turned on
+  byte sparkMode : 3; //Spark output mode (Eg Wasted spark, single channel or Wasted COP)
   byte triggerFilter : 2; //The mode of trigger filter being used (0=Off, 1=Light (Not currently used), 2=Normal, 3=Aggressive)
   byte ignCranklock : 1; //Whether or not the ignition timing during cranking is locked to a CAS pulse. Only currently valid for Basic distributor and 4G63.
 
@@ -606,50 +616,15 @@ See ini file for further info (Config Page 11 in the ini)
 struct config11 {
   byte crankingEnrichBins[4];
   byte crankingEnrichValues[4];
-  byte unused11_8;
-  byte unused11_9;
-  byte unused11_10;
-  byte unused11_11;
-  byte unused11_12;
-  byte unused11_13;
-  byte unused11_14;
-  byte unused11_15;
-  byte unused11_16;
-  byte unused11_17;
-  byte unused11_18;
-  byte unused11_19;
-  byte unused11_20;
-  byte unused10_21;
-  byte unused11_22;
-  byte unused11_23;
-  byte unused11_24;
-  byte unused11_25;
-  byte unused11_26;
-  byte unused11_27;
-  byte unused11_28;
-  byte unused11_29;
-  byte unused11_107;
-  byte unused11_108;
-  byte unused11_109;
-  byte unused11_110;
-  byte unused11_111;
-  byte unused11_112;
-  byte unused11_113;
-  byte unused11_114;
-  byte unused11_115;
-  byte unused11_116;
-  byte unused11_117;
-  byte unused11_118;
-  byte unused11_119;
-  byte unused11_120;
-  byte unused11_121;
-  byte unused11_122;
-  byte unused11_123;
-  byte unused11_124;
-  byte unused11_125;
-  byte unused11_126;
-  byte unused11_127;
-  byte unused11_128_192[64];
+
+  byte rotaryType : 2;
+  byte unused11_8c : 6;
+
+  byte rotarySplitValues[8];
+  byte rotarySplitBins[8];
+
+  byte unused11_25_192[167];
+  
 #if defined(CORE_AVR)
   };
 #else
