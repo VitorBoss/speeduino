@@ -400,6 +400,7 @@ extern byte secondaryTriggerEdge;
 extern int CRANK_ANGLE_MAX;
 extern int CRANK_ANGLE_MAX_IGN;
 extern int CRANK_ANGLE_MAX_INJ; //The number of crank degrees that the system track over. 360 for wasted / timed batch and 720 for sequential
+extern volatile int runSecsX10;
   
 
 //This needs to be here because using the config page directly can prevent burning the setting
@@ -639,7 +640,9 @@ struct config2 {
 
   byte injAngRPM[4];
 
-  byte unused2_95[29];
+  byte idleStartDelay;
+
+  byte unused2_95[28];
 
 #if defined(CORE_AVR)
   };
