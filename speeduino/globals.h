@@ -640,7 +640,9 @@ struct config2 {
 
   byte injAngRPM[4];
 
-  byte unused2_95[29];
+  byte idleStartDelay;
+
+  byte unused2_95[28];
 
 #if defined(CORE_AVR)
   };
