@@ -525,9 +525,9 @@ struct statuses {
  */
 struct config2 {
 
-  byte unused2_0;
+  byte aseTsnDelay;
   byte unused2_1;
-  byte unused2_2;  //Was ASE
+  byte ASEValue;  //Afterstart enrichment (%)
   byte aeMode : 2; /**< Acceleration Enrichment mode. 0 = TPS, 1 = MAP. Values 2 and 3 reserved for potential future use (ie blended TPS / MAP) */
   byte battVCorMode : 1;
   byte unused1_3c : 5;
