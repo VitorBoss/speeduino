@@ -403,7 +403,7 @@ extern byte secondaryTriggerEdge;
 extern int CRANK_ANGLE_MAX;
 extern int CRANK_ANGLE_MAX_IGN;
 extern int CRANK_ANGLE_MAX_INJ; //The number of crank degrees that the system track over. 360 for wasted / timed batch and 720 for sequential
-extern volatile int runSecsX10;
+extern volatile uint16_t runSecsX10;
   
 
 //This needs to be here because using the config page directly can prevent burning the setting
@@ -518,6 +518,7 @@ struct statuses {
   byte vvtTargetAngle;
   byte vvtDuty;
   uint16_t injAngle;
+  byte ASEValue;
 };
 
 /**
@@ -530,7 +531,7 @@ struct config2 {
 
   byte aseTsnDelay;
   byte unused2_1;
-  byte ASEValue;  //Afterstart enrichment (%)
+  byte unused2_2;  //was ASE
   byte aeMode : 2; /**< Acceleration Enrichment mode. 0 = TPS, 1 = MAP. Values 2 and 3 reserved for potential future use (ie blended TPS / MAP) */
   byte battVCorMode : 1;
   byte aeApplyMode : 1;
