@@ -6,7 +6,7 @@
 | **Build Status** | [![Build](https://img.shields.io/travis/noisymime/speeduino.svg)](https://travis-ci.org/noisymime/speeduino/) |
 | **MISRA Status** | ![MISRA](https://img.shields.io/azure-devops/tests/speeduino/Speeduino/1?label=MISRA&passed_label=warnings&failed_label=violations) |
 | **Feature Bounties** | [![Bountysource](https://img.shields.io/bountysource/team/speeduino/activity.svg)](https://www.bountysource.com/teams/speeduino) |
-| **Commits since last release** | ![Unreleased commits](https://github.com/noisymime/speeduino/compare/202002...master)
+| **Commits since last release** | [![GitHub commits](https://img.shields.io/github/commits-since/noisymime/speeduino/202002.svg)](https://github.com/noisymime/speeduino/compare/202002...master)
 
 Speeduino
 =========
