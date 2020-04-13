@@ -324,6 +324,17 @@ void doUpdates()
     //Introdced a minimum temperature for DFCO. Default it to 40C
     configPage2.dfcoMinCLT = 40;
     
+    //AntiJerk retard
+    configPage4.AntiJerkValues[0] = 5;
+    configPage4.AntiJerkValues[1] = 5;
+    configPage4.AntiJerkValues[2] = 5;
+    configPage4.AntiJerkValues[3] = 5;
+    //AntiJerk taper
+    configPage4.AntiJerkTaper[0] = 0;
+    configPage4.AntiJerkTaper[1] = 0;
+    configPage4.AntiJerkTaper[2] = 0;
+    configPage4.AntiJerkTaper[3] = 0;
+
     writeAllConfig();
     EEPROM.write(EEPROM_DATA_VERSION, 14);
   }

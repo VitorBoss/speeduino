@@ -303,6 +303,8 @@ extern struct table2D flexAdvTable;   //6 bin flex fuel correction table for tim
 extern struct table2D flexBoostTable; //6 bin flex fuel correction table for boost adjustments (2D)
 extern struct table2D knockWindowStartTable;
 extern struct table2D knockWindowDurationTable;
+extern struct table2D AntiJerkTable; //Anti jerk table
+extern struct table2D ajTaperTable; //Anti jerk table
 
 //These are for the direct port manipulation of the injectors, coils and aux outputs
 extern volatile PORT_TYPE *inj1_pin_port;
@@ -517,6 +519,7 @@ struct statuses {
   uint16_t injAngle;
   byte ASEValue;
   uint16_t vss; /**< Current speed reading. Natively stored in kph and converted to mph in TS if required */
+  uint16_t seclx10;
 };
 
 /**
@@ -747,7 +750,8 @@ struct config4 {
   byte idleAdvBins[6];
   byte idleAdvValues[6];
 
-  byte unused4_120[8];
+  uint8_t AntiJerkValues[4];
+  uint8_t AntiJerkTaper[4];
 
 #if defined(CORE_AVR)
   };
