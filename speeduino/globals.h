@@ -214,6 +214,9 @@
 #define AE_MODE_TPS         0
 #define AE_MODE_MAP         1
 
+#define AE_MODE_MULTIPLIER  0
+#define AE_MODE_ADDER       1
+
 #define KNOCK_MODE_OFF      0
 #define KNOCK_MODE_DIGITAL  1
 #define KNOCK_MODE_ANALOG   2
@@ -517,6 +520,7 @@ struct statuses {
   uint16_t injAngle;
   byte ASEValue;
   uint16_t vss; /**< Current speed reading. Natively stored in kph and converted to mph in TS if required */
+  uint16_t seclx10;
 };
 
 /**
@@ -532,7 +536,8 @@ struct config2 {
   byte unused2_2;  //was ASE
   byte aeMode : 2; /**< Acceleration Enrichment mode. 0 = TPS, 1 = MAP. Values 2 and 3 reserved for potential future use (ie blended TPS / MAP) */
   byte battVCorMode : 1;
-  byte unused1_3c : 5;
+  byte aeApplyMode : 1;
+  byte unused1_3c : 4;
   byte wueValues[10]; //Warm up enrichment array (10 bytes)
   byte crankingPct; //Cranking enrichment
   byte pinMapping; // The board / ping mapping to be used
@@ -659,7 +664,8 @@ struct config2 {
   byte vssRatio5;
   byte vssRatio6;
 
-  byte unused2_95[14];
+  byte primingDelay;
+  byte unused2_95[13];
 
 #if defined(CORE_AVR)
   };
