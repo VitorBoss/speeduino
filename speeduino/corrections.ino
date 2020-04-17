@@ -770,8 +770,8 @@ int8_t correctionAntiJerk(int8_t advance)
   byte AntiJerkRetard = 0;
   if ( (ajActive > 0) || (currentStatus.tpsDOT > 0) )
   {
-    if ( ajActive == 0 ) 
-    { 
+    if ( ajActive == 0 )
+    {
       ajActive = currentStatus.tpsDOT;
       ajStartValue = currentStatus.seclx10;
     }
@@ -779,17 +779,13 @@ int8_t correctionAntiJerk(int8_t advance)
     //seclx10 overflow protection
     if ( currentStatus.seclx10 < ajStartValue ) { ajStartValue = currentStatus.seclx10; }
 
-    if ( (currentStatus.seclx10 - ajStartValue) < table2D_getValue(&ajTaperTable, ajActive) )
+    byte period = table2D_getValue(&ajTaperTable, ajActive);
+    byte maxRetard = table2D_getValue(&AntiJerkTable, ajActive);
+    if ( (period > 0) && (maxRetard > 0) && (currentStatus.seclx10 - ajStartValue) < period )
     {
-      //BIT_SET(currentStatus.spark2, BIT_SPARK2_ANTIJERK);
-      AntiJerkRetard = map((currentStatus.seclx10 - ajStartValue), 0, table2D_getValue(&ajTaperTable, ajActive),\
-        table2D_getValue(&AntiJerkTable, ajActive), 0);
-      if ( AntiJerkRetard == 0 ) { ajActive = 0; }
+      AntiJerkRetard = map((currentStatus.seclx10 - ajStartValue), 0, period, maxRetard, 0);
     }
-  }
-  else
-  {
-    //BIT_CLEAR(currentStatus.spark2, BIT_SPARK2_ANTIJERK);
+    if ( AntiJerkRetard == 0 ) { ajActive = 0; }
   }
   return advance - AntiJerkRetard;
 }
