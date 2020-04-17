@@ -10,8 +10,8 @@
   #define LED_BUILTIN 13
   #define CORE_AVR
   #define BOARD_H "board_avr2560.h"
-  #define INJ_CHANNELS 4
-  #define IGN_CHANNELS 5
+  #define INJ_CHANNELS 8
+  #define IGN_CHANNELS 1
 
   //#define TIMER5_MICROS
 
@@ -519,7 +519,8 @@ struct statuses {
   byte vvtDuty;
   uint16_t injAngle;
   byte ASEValue;
-  uint8_t seclx10;
+  uint16_t vss; /**< Current speed reading. Natively stored in kph and converted to mph in TS if required */
+  uint16_t seclx10;
 };
 
 /**
@@ -648,9 +649,23 @@ struct config2 {
 
   byte idleTaperTime;
   byte dfcoDelay;
-  byte primingDelay;
+  byte dfcoMinCLT;
 
-  byte unused2_95[26];
+  //VSS Stuff
+  byte vssEnable : 1;
+  byte vssPullup : 1;
+  
+  uint16_t vssPulsesPerKm;
+  byte vssSpare;
+  uint16_t vssRatio1;
+  uint16_t vssRatio2;
+  byte vssRatio3;
+  byte vssRatio4;
+  byte vssRatio5;
+  byte vssRatio6;
+
+  byte primingDelay;
+  byte unused2_95[13];
 
 #if defined(CORE_AVR)
   };
