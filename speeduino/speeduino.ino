@@ -926,7 +926,7 @@ void loop()
         //Refresh the current crank angle info
         //ignition1StartAngle = 335;
         crankAngle = getCrankAngle(); //Refresh with the latest crank angle
-        if (crankAngle > CRANK_ANGLE_MAX_IGN ) { crankAngle -= 360; }
+        while (crankAngle > CRANK_ANGLE_MAX_IGN ) { crankAngle -= CRANK_ANGLE_MAX_IGN; }
 
 #if IGN_CHANNELS >= 1
         if ( (ignition1StartAngle <= crankAngle) && (ignitionSchedule1.Status == RUNNING) ) { ignition1StartAngle += CRANK_ANGLE_MAX_IGN; }
@@ -1199,6 +1199,11 @@ uint16_t PW(int REQ_FUEL, byte VE, long MAP, uint16_t corrections, int injOpen)
   {
     //If intermeditate is not 0, we need to add the opening time (0 typically indicates that one of the full fuel cuts is active)
     intermediate += injOpen; //Add the injector opening time
+    //AE Adds % of req_fuel
+    if ( configPage2.aeApplyMode == AE_MODE_ADDER )
+    {
+      intermediate += ( ((unsigned long)REQ_FUEL) * (currentStatus.AEamount - 100) ) / 100;
+    }
     if ( intermediate > 65535)
     {
       intermediate = 65535;  //Make sure this won't overflow when we convert to uInt. This means the maximum pulsewidth possible is 65.535mS

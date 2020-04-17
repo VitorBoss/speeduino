@@ -66,8 +66,11 @@ uint16_t correctionsFuel()
   if (activeCorrections == MAX_CORRECTIONS) { sumCorrections = sumCorrections / powint(100,activeCorrections); activeCorrections = 0; } // Need to check this to ensure that sumCorrections doesn't overflow. Can occur when the number of corrections is greater than 3 (Which is 100^4) as 100^5 can overflow
 
   currentStatus.AEamount = correctionAccel();
+  if (configPage2.aeApplyMode == AE_MODE_MULTIPLIER)
+  {
   if (currentStatus.AEamount != 100) { sumCorrections = (sumCorrections * currentStatus.AEamount); activeCorrections++; }
   if (activeCorrections == MAX_CORRECTIONS) { sumCorrections = sumCorrections / powint(100,activeCorrections); activeCorrections = 0; }
+  }
 
   result = correctionFloodClear();
   if (result != 100) { sumCorrections = (sumCorrections * result); activeCorrections++; }
@@ -438,10 +441,10 @@ bool correctionDFCO()
     }
     else 
     {
-      if ( dfcoStart == 0 ) { dfcoStart = runSecsX10; }
-      if ( ( currentStatus.coolant >= (int)(configPage2.dfcoMinCLT - CALIBRATION_TEMPERATURE_OFFSET) ) && ( currentStatus.RPM > (unsigned int)( (configPage4.dfcoRPM * 10) + configPage4.dfcoHyster) ) && ( currentStatus.TPS < configPage4.dfcoTPSThresh ) && ( (runSecsX10 - dfcoStart) > configPage2.dfcoDelay ) )
+      if ( ( currentStatus.coolant >= (int)(configPage2.dfcoMinCLT - CALIBRATION_TEMPERATURE_OFFSET) ) && ( currentStatus.RPM > (unsigned int)( (configPage4.dfcoRPM * 10) + configPage4.dfcoHyster) ) && ( currentStatus.TPS < configPage4.dfcoTPSThresh ) )
       {
-        DFCOValue = true;
+        if ( dfcoStart == 0 ) { dfcoStart = runSecsX10; }
+        if( (runSecsX10 - dfcoStart) > configPage2.dfcoDelay ) { DFCOValue = true; }
       }
     } // DFCO active check
   } // DFCO enabled check
@@ -559,6 +562,7 @@ int8_t correctionsIgn(int8_t base_advance)
   advance = correctionSoftFlatShift(advance);
   advance = correctionKnock(advance);
   advance = correctionAntiJerk(advance);
+  if (advance < -OFFSET_IGNITION) { advance = -OFFSET_IGNITION; } //Prevents values below -40
 
   //Fixed timing check must go last
   advance = correctionFixedTiming(advance);
@@ -583,13 +587,14 @@ int8_t correctionCrankingFixedTiming(int8_t advance)
 
 int8_t correctionFlexTiming(int8_t advance)
 {
-  byte ignFlexValue = advance;
+  int16_t ignFlexValue = advance;
   if( configPage2.flexEnabled == 1 ) //Check for flex being enabled
   {
-    currentStatus.flexIgnCorrection = (int8_t)table2D_getValue(&flexAdvTable, currentStatus.ethanolPct); //This gets cast to a signed 8 bit value to allows for negative advance (ie retard) values here. 
-    ignFlexValue = advance + currentStatus.flexIgnCorrection;
+    ignFlexValue = (int16_t) table2D_getValue(&flexAdvTable, currentStatus.ethanolPct) - OFFSET_IGNITION; //Negative values are achieved with offset
+    currentStatus.flexIgnCorrection = (int8_t) ignFlexValue; //This gets cast to a signed 8 bit value to allows for negative advance (ie retard) values here. 
+    ignFlexValue = (int8_t) advance + currentStatus.flexIgnCorrection;
   }
-  return ignFlexValue;
+  return (int8_t) ignFlexValue;
 }
 
 int8_t correctionIATretard(int8_t advance)
