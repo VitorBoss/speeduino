@@ -10,8 +10,8 @@
   #define LED_BUILTIN 13
   #define CORE_AVR
   #define BOARD_H "board_avr2560.h"
-  #define INJ_CHANNELS 8
-  #define IGN_CHANNELS 1
+  #define INJ_CHANNELS 4
+  #define IGN_CHANNELS 5
 
   //#define TIMER5_MICROS
 
@@ -306,6 +306,8 @@ extern struct table2D flexAdvTable;   //6 bin flex fuel correction table for tim
 extern struct table2D flexBoostTable; //6 bin flex fuel correction table for boost adjustments (2D)
 extern struct table2D knockWindowStartTable;
 extern struct table2D knockWindowDurationTable;
+extern struct table2D AntiJerkTable; //Anti jerk table
+extern struct table2D ajTaperTable; //Anti jerk table
 
 //These are for the direct port manipulation of the injectors, coils and aux outputs
 extern volatile PORT_TYPE *inj1_pin_port;
@@ -753,7 +755,8 @@ struct config4 {
   byte idleAdvBins[6];
   byte idleAdvValues[6];
 
-  byte unused4_120[8];
+  uint8_t AntiJerkValues[4];
+  uint8_t AntiJerkTaper[4];
 
 #if defined(CORE_AVR)
   };
