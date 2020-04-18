@@ -214,6 +214,9 @@
 #define AE_MODE_TPS         0
 #define AE_MODE_MAP         1
 
+#define AE_MODE_MULTIPLIER  0
+#define AE_MODE_ADDER       1
+
 #define KNOCK_MODE_OFF      0
 #define KNOCK_MODE_DIGITAL  1
 #define KNOCK_MODE_ANALOG   2
@@ -535,7 +538,8 @@ struct config2 {
   byte unused2_2;  //was ASE
   byte aeMode : 2; /**< Acceleration Enrichment mode. 0 = TPS, 1 = MAP. Values 2 and 3 reserved for potential future use (ie blended TPS / MAP) */
   byte battVCorMode : 1;
-  byte unused1_3c : 5;
+  byte aeApplyMode : 1;
+  byte unused1_3c : 4;
   byte wueValues[10]; //Warm up enrichment array (10 bytes)
   byte crankingPct; //Cranking enrichment
   byte pinMapping; // The board / ping mapping to be used
@@ -662,7 +666,8 @@ struct config2 {
   byte vssRatio5;
   byte vssRatio6;
 
-  byte unused2_95[14];
+  byte primingDelay;
+  byte unused2_95[13];
 
 #if defined(CORE_AVR)
   };
@@ -710,7 +715,7 @@ struct config4 {
   byte crankRPM; //RPM below which the engine is considered to be cranking
   byte floodClear; //TPS value that triggers flood clear mode (No fuel whilst cranking)
   byte SoftRevLim; //Soft rev limit (RPM/100)
-  byte SoftLimRetard; //Amount soft limit retards (degrees)
+  int8_t SoftLimRetard; //Amount soft limit retards (degrees)
   byte SoftLimMax; //Time the soft limit can run
   byte HardRevLim; //Hard rev limit (RPM/100)
   byte taeBins[4]; //TPS based acceleration enrichment bins (%/s)
@@ -824,7 +829,7 @@ struct config6 {
   byte flatSEnable : 1;
   byte baroPin : 4;
   byte flatSSoftWin;
-  byte flatSRetard;
+  int8_t flatSRetard; //Allow for negative advance value (ATDC)
   byte flatSArm;
 
   byte iacCLValues[10]; //Closed loop target RPM value
