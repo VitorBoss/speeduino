@@ -33,7 +33,6 @@ int8_t correctionNitrous(int8_t);
 int8_t correctionSoftLaunch(int8_t);
 int8_t correctionSoftFlatShift(int8_t);
 int8_t correctionKnock(int8_t);
-int8_t correctionAntiJerk(int8_t);
 
 uint16_t correctionsDwell(uint16_t dwell);
 
@@ -44,7 +43,5 @@ extern int16_t knockWindowMin; //The current minimum crank angle for a knock pul
 extern int16_t knockWindowMax;//The current maximum crank angle for a knock pulse to be valid
 extern byte aseTsnStart;
 extern uint16_t dfcoStart;
-extern uint16_t ajStartValue;
-extern byte ajActive;
 
 #endif // CORRECTIONS_H

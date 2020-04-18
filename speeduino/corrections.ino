@@ -31,8 +31,6 @@ int16_t knockWindowMin; //The current minimum crank angle for a knock pulse to b
 int16_t knockWindowMax;//The current maximum crank angle for a knock pulse to be valid
 byte aseTsnStart;
 uint16_t dfcoStart;
-uint16_t ajStartValue;
-byte ajActive;
 
 void initialiseCorrections()
 {
@@ -561,7 +559,6 @@ int8_t correctionsIgn(int8_t base_advance)
   advance = correctionSoftLaunch(advance);
   advance = correctionSoftFlatShift(advance);
   advance = correctionKnock(advance);
-  advance = correctionAntiJerk(advance);
   if (advance < -OFFSET_IGNITION) { advance = -OFFSET_IGNITION; } //Prevents values below -40
 
   //Fixed timing check must go last
@@ -768,29 +765,4 @@ uint16_t correctionsDwell(uint16_t dwell)
     tempDwell = (revolutionTime / pulsesPerRevolution) - (configPage4.sparkDur * 100);
   }
   return tempDwell;
-}
-
-int8_t correctionAntiJerk(int8_t advance)
-{
-  byte AntiJerkRetard = 0;
-  if ( (ajActive > 0) || (currentStatus.tpsDOT > 0) )
-  {
-    if ( ajActive == 0 )
-    {
-      ajActive = currentStatus.tpsDOT;
-      ajStartValue = currentStatus.seclx10;
-    }
-    
-    //seclx10 overflow protection
-    if ( currentStatus.seclx10 < ajStartValue ) { ajStartValue = currentStatus.seclx10; }
-
-    byte period = table2D_getValue(&ajTaperTable, ajActive);
-    byte maxRetard = table2D_getValue(&AntiJerkTable, ajActive);
-    if ( (period > 0) && (maxRetard > 0) && (currentStatus.seclx10 - ajStartValue) < period )
-    {
-      AntiJerkRetard = map((currentStatus.seclx10 - ajStartValue), 0, period, maxRetard, 0);
-    }
-    if ( AntiJerkRetard == 0 ) { ajActive = 0; }
-  }
-  return advance - AntiJerkRetard;
 }
