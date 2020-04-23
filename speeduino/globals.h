@@ -214,6 +214,9 @@
 #define AE_MODE_TPS         0
 #define AE_MODE_MAP         1
 
+#define AE_MODE_MULTIPLIER  0
+#define AE_MODE_ADDER       1
+
 #define KNOCK_MODE_OFF      0
 #define KNOCK_MODE_DIGITAL  1
 #define KNOCK_MODE_ANALOG   2
@@ -303,6 +306,8 @@ extern struct table2D flexAdvTable;   //6 bin flex fuel correction table for tim
 extern struct table2D flexBoostTable; //6 bin flex fuel correction table for boost adjustments (2D)
 extern struct table2D knockWindowStartTable;
 extern struct table2D knockWindowDurationTable;
+extern struct table2D AntiJerkTable; //Anti jerk table
+extern struct table2D ajTaperTable; //Anti jerk table
 
 //These are for the direct port manipulation of the injectors, coils and aux outputs
 extern volatile PORT_TYPE *inj1_pin_port;
@@ -410,7 +415,7 @@ extern volatile byte TIMER_mask;
 extern volatile byte LOOP_TIMER;
 
 //These functions all do checks on a pin to determine if it is already in use by another (higher importance) function
-#define pinIsInjector(pin)  ( ((pin) == pinInjector1) || ((pin) == pinInjector2) || ((pin) == pinInjector3) || ((pin) == pinInjector4) )
+#define pinIsInjector(pin)  ( ((pin) == pinInjector1) || ((pin) == pinInjector2) || ((pin) == pinInjector3) || ((pin) == pinInjector4) || ((pin) == pinInjector5) || ((pin) == pinInjector6) || ((pin) == pinInjector7) || ((pin) == pinInjector8) )
 #define pinIsIgnition(pin)  ( ((pin) == pinCoil1) || ((pin) == pinCoil2) || ((pin) == pinCoil3) || ((pin) == pinCoil4) || ((pin) == pinCoil5) || ((pin) == pinCoil6) || ((pin) == pinCoil7) || ((pin) == pinCoil8) )
 #define pinIsSensor(pin)    ( ((pin) == pinCLT) || ((pin) == pinIAT) || ((pin) == pinMAP) || ((pin) == pinTPS) || ((pin) == pinO2) || ((pin) == pinBat) )
 #define pinIsUsed(pin)      ( pinIsInjector((pin)) || pinIsIgnition((pin)) || pinIsSensor((pin)) )
@@ -516,6 +521,8 @@ struct statuses {
   byte vvtDuty;
   uint16_t injAngle;
   byte ASEValue;
+  uint16_t vss; /**< Current speed reading. Natively stored in kph and converted to mph in TS if required */
+  uint16_t seclx10;
 };
 
 /**
@@ -531,7 +538,8 @@ struct config2 {
   byte unused2_2;  //was ASE
   byte aeMode : 2; /**< Acceleration Enrichment mode. 0 = TPS, 1 = MAP. Values 2 and 3 reserved for potential future use (ie blended TPS / MAP) */
   byte battVCorMode : 1;
-  byte unused1_3c : 4;
+  byte aeApplyMode : 1;
+  byte unused1_3c : 3;
   byte fixedMultiplyMAP : 1; //0 multiplyMAP = baro | 1 multiplyMAP = 100
   byte wueValues[10]; //Warm up enrichment array (10 bytes)
   byte crankingPct; //Cranking enrichment
@@ -643,8 +651,24 @@ struct config2 {
   byte injAngRPM[4];
 
   byte idleTaperTime;
+  byte dfcoDelay;
+  byte dfcoMinCLT;
 
-  byte unused2_95[28];
+  //VSS Stuff
+  byte vssEnable : 1;
+  byte vssPullup : 1;
+  
+  uint16_t vssPulsesPerKm;
+  byte vssSpare;
+  uint16_t vssRatio1;
+  uint16_t vssRatio2;
+  byte vssRatio3;
+  byte vssRatio4;
+  byte vssRatio5;
+  byte vssRatio6;
+
+  byte primingDelay;
+  byte unused2_95[13];
 
 #if defined(CORE_AVR)
   };
@@ -692,7 +716,7 @@ struct config4 {
   byte crankRPM; //RPM below which the engine is considered to be cranking
   byte floodClear; //TPS value that triggers flood clear mode (No fuel whilst cranking)
   byte SoftRevLim; //Soft rev limit (RPM/100)
-  byte SoftLimRetard; //Amount soft limit retards (degrees)
+  int8_t SoftLimRetard; //Amount soft limit retards (degrees)
   byte SoftLimMax; //Time the soft limit can run
   byte HardRevLim; //Hard rev limit (RPM/100)
   byte taeBins[4]; //TPS based acceleration enrichment bins (%/s)
@@ -732,7 +756,8 @@ struct config4 {
   byte idleAdvBins[6];
   byte idleAdvValues[6];
 
-  byte unused4_120[8];
+  uint8_t AntiJerkValues[4];
+  uint8_t AntiJerkTaper[4];
 
 #if defined(CORE_AVR)
   };
@@ -805,7 +830,7 @@ struct config6 {
   byte flatSEnable : 1;
   byte baroPin : 4;
   byte flatSSoftWin;
-  byte flatSRetard;
+  int8_t flatSRetard; //Allow for negative advance value (ATDC)
   byte flatSArm;
 
   byte iacCLValues[10]; //Closed loop target RPM value
@@ -1033,12 +1058,12 @@ struct config10 {
 
 extern byte pinInjector1; //Output pin injector 1
 extern byte pinInjector2; //Output pin injector 2
-extern byte pinInjector3; //Output pin injector 3 is on
-extern byte pinInjector4; //Output pin injector 4 is on
-extern byte pinInjector5; //Output pin injector 5 NOT USED YET
-extern byte pinInjector6; //Placeholder only - NOT USED
-extern byte pinInjector7; //Placeholder only - NOT USED
-extern byte pinInjector8; //Placeholder only - NOT USED
+extern byte pinInjector3; //Output pin injector 3
+extern byte pinInjector4; //Output pin injector 4
+extern byte pinInjector5; //Output pin injector 5
+extern byte pinInjector6; //Output pin injector 6
+extern byte pinInjector7; //Output pin injector 7
+extern byte pinInjector8; //Output pin injector 8
 extern byte pinCoil1; //Pin for coil 1
 extern byte pinCoil2; //Pin for coil 2
 extern byte pinCoil3; //Pin for coil 3

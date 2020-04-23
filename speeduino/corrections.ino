@@ -30,6 +30,9 @@ byte lastKnockCount;
 int16_t knockWindowMin; //The current minimum crank angle for a knock pulse to be valid
 int16_t knockWindowMax;//The current maximum crank angle for a knock pulse to be valid
 byte aseTsnStart;
+uint16_t dfcoStart;
+uint16_t ajStartValue;
+byte ajActive;
 
 void initialiseCorrections()
 {
@@ -63,8 +66,11 @@ uint16_t correctionsFuel()
   if (activeCorrections == MAX_CORRECTIONS) { sumCorrections = sumCorrections / powint(100,activeCorrections); activeCorrections = 0; } // Need to check this to ensure that sumCorrections doesn't overflow. Can occur when the number of corrections is greater than 3 (Which is 100^4) as 100^5 can overflow
 
   currentStatus.AEamount = correctionAccel();
+  if (configPage2.aeApplyMode == AE_MODE_MULTIPLIER)
+  {
   if (currentStatus.AEamount != 100) { sumCorrections = (sumCorrections * currentStatus.AEamount); activeCorrections++; }
   if (activeCorrections == MAX_CORRECTIONS) { sumCorrections = sumCorrections / powint(100,activeCorrections); activeCorrections = 0; }
+  }
 
   result = correctionFloodClear();
   if (result != 100) { sumCorrections = (sumCorrections * result); activeCorrections++; }
@@ -428,9 +434,20 @@ bool correctionDFCO()
   bool DFCOValue = false;
   if ( configPage2.dfcoEnabled == 1 )
   {
-    if ( bitRead(currentStatus.status1, BIT_STATUS1_DFCO) == 1 ) { DFCOValue = ( currentStatus.RPM > ( configPage4.dfcoRPM * 10) ) && ( currentStatus.TPS < configPage4.dfcoTPSThresh ); }
-    else { DFCOValue = ( currentStatus.RPM > (unsigned int)( (configPage4.dfcoRPM * 10) + configPage4.dfcoHyster) ) && ( currentStatus.TPS < configPage4.dfcoTPSThresh ); }
-  }
+    if ( bitRead(currentStatus.status1, BIT_STATUS1_DFCO) == 1 ) 
+    {
+      DFCOValue = ( currentStatus.RPM > ( configPage4.dfcoRPM * 10) ) && ( currentStatus.TPS < configPage4.dfcoTPSThresh ); 
+      if ( DFCOValue == false) { dfcoStart = 0; }
+    }
+    else 
+    {
+      if ( ( currentStatus.coolant >= (int)(configPage2.dfcoMinCLT - CALIBRATION_TEMPERATURE_OFFSET) ) && ( currentStatus.RPM > (unsigned int)( (configPage4.dfcoRPM * 10) + configPage4.dfcoHyster) ) && ( currentStatus.TPS < configPage4.dfcoTPSThresh ) )
+      {
+        if ( dfcoStart == 0 ) { dfcoStart = runSecsX10; }
+        if( (runSecsX10 - dfcoStart) > configPage2.dfcoDelay ) { DFCOValue = true; }
+      }
+    } // DFCO active check
+  } // DFCO enabled check
   return DFCOValue;
 }
 
@@ -473,14 +490,14 @@ byte correctionAFRClosedLoop()
     //Note that this should only run after the sensor warmup delay necause it is used within the Include AFR option
     if(currentStatus.runSecs > configPage6.ego_sdelay) { currentStatus.afrTarget = get3DTableValue(&afrTable, currentStatus.fuelLoad, currentStatus.RPM); } //Perform the target lookup
 
-    //Check all other requirements for closed loop adjustments
-    if( (currentStatus.coolant > (int)(configPage6.egoTemp - CALIBRATION_TEMPERATURE_OFFSET)) && (currentStatus.RPM > (unsigned int)(configPage6.egoRPM * 100)) && (currentStatus.TPS < configPage6.egoTPSMax) && (currentStatus.O2 < configPage6.ego_max) && (currentStatus.O2 > configPage6.ego_min) && (currentStatus.runSecs > configPage6.ego_sdelay) )
+    if(ignitionCount >= AFRnextCycle)
     {
-      AFRValue = currentStatus.egoCorrection; //Need to record this here, just to make sure the correction stays 'on' even if the nextCycle count isn't ready
-
-      if(ignitionCount >= AFRnextCycle)
+      AFRnextCycle = ignitionCount + configPage6.egoCount; //Set the target ignition event for the next calculation
+        
+      //Check all other requirements for closed loop adjustments
+      if( (currentStatus.coolant > (int)(configPage6.egoTemp - CALIBRATION_TEMPERATURE_OFFSET)) && (currentStatus.RPM > (unsigned int)(configPage6.egoRPM * 100)) && (currentStatus.TPS < configPage6.egoTPSMax) && (currentStatus.O2 < configPage6.ego_max) && (currentStatus.O2 > configPage6.ego_min) && (currentStatus.runSecs > configPage6.ego_sdelay) )
       {
-        AFRnextCycle = ignitionCount + configPage6.egoCount; //Set the target ignition event for the next calculation
+        AFRValue = currentStatus.egoCorrection; //Need to record this here, just to make sure the correction stays 'on' even if the nextCycle count isn't ready
 
         //Check which algorithm is used, simple or PID
         if (configPage6.egoAlgorithm == EGO_ALGORITHM_SIMPLE)
@@ -523,8 +540,8 @@ byte correctionAFRClosedLoop()
           
         }
         else { AFRValue = 100; } // Occurs if the egoAlgorithm is set to 0 (No Correction)
-      } //Ignition count check
-    } //Multi variable check
+      } //Multi variable check 
+    } //Ignition count check
   } //egoType
 
   return AFRValue; //Catch all (Includes when AFR target = current AFR
@@ -544,6 +561,8 @@ int8_t correctionsIgn(int8_t base_advance)
   advance = correctionSoftLaunch(advance);
   advance = correctionSoftFlatShift(advance);
   advance = correctionKnock(advance);
+  advance = correctionAntiJerk(advance);
+  if (advance < -OFFSET_IGNITION) { advance = -OFFSET_IGNITION; } //Prevents values below -40
 
   //Fixed timing check must go last
   advance = correctionFixedTiming(advance);
@@ -568,13 +587,14 @@ int8_t correctionCrankingFixedTiming(int8_t advance)
 
 int8_t correctionFlexTiming(int8_t advance)
 {
-  byte ignFlexValue = advance;
+  int16_t ignFlexValue = advance;
   if( configPage2.flexEnabled == 1 ) //Check for flex being enabled
   {
-    currentStatus.flexIgnCorrection = (int8_t)table2D_getValue(&flexAdvTable, currentStatus.ethanolPct); //This gets cast to a signed 8 bit value to allows for negative advance (ie retard) values here. 
-    ignFlexValue = advance + currentStatus.flexIgnCorrection;
+    ignFlexValue = (int16_t) table2D_getValue(&flexAdvTable, currentStatus.ethanolPct) - OFFSET_IGNITION; //Negative values are achieved with offset
+    currentStatus.flexIgnCorrection = (int8_t) ignFlexValue; //This gets cast to a signed 8 bit value to allows for negative advance (ie retard) values here. 
+    ignFlexValue = (int8_t) advance + currentStatus.flexIgnCorrection;
   }
-  return ignFlexValue;
+  return (int8_t) ignFlexValue;
 }
 
 int8_t correctionIATretard(int8_t advance)
@@ -748,4 +768,29 @@ uint16_t correctionsDwell(uint16_t dwell)
     tempDwell = (revolutionTime / pulsesPerRevolution) - (configPage4.sparkDur * 100);
   }
   return tempDwell;
+}
+
+int8_t correctionAntiJerk(int8_t advance)
+{
+  byte AntiJerkRetard = 0;
+  if ( (ajActive > 0) || (currentStatus.tpsDOT > 0) )
+  {
+    if ( ajActive == 0 )
+    {
+      ajActive = currentStatus.tpsDOT;
+      ajStartValue = currentStatus.seclx10;
+    }
+    
+    //seclx10 overflow protection
+    if ( currentStatus.seclx10 < ajStartValue ) { ajStartValue = currentStatus.seclx10; }
+
+    byte period = table2D_getValue(&ajTaperTable, ajActive);
+    byte maxRetard = table2D_getValue(&AntiJerkTable, ajActive);
+    if ( (period > 0) && (maxRetard > 0) && (currentStatus.seclx10 - ajStartValue) < period )
+    {
+      AntiJerkRetard = map((currentStatus.seclx10 - ajStartValue), 0, period, maxRetard, 0);
+    }
+    if ( AntiJerkRetard == 0 ) { ajActive = 0; }
+  }
+  return advance - AntiJerkRetard;
 }

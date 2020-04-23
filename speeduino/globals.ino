@@ -38,6 +38,8 @@ struct table2D flexAdvTable;   //6 bin flex fuel correction table for timing adv
 struct table2D flexBoostTable; //6 bin flex fuel correction table for boost adjustments (2D)
 struct table2D knockWindowStartTable;
 struct table2D knockWindowDurationTable;
+struct table2D AntiJerkTable; //Anti jerk table
+struct table2D ajTaperTable; //Anti jerk table
 
 //These are for the direct port manipulation of the injectors, coils and aux outputs
 volatile PORT_TYPE *inj1_pin_port;
@@ -138,12 +140,12 @@ volatile byte LOOP_TIMER;
 
 byte pinInjector1; //Output pin injector 1
 byte pinInjector2; //Output pin injector 2
-byte pinInjector3; //Output pin injector 3 is on
-byte pinInjector4; //Output pin injector 4 is on
-byte pinInjector5; //Output pin injector 5 NOT USED YET
-byte pinInjector6; //Placeholder only - NOT USED
-byte pinInjector7; //Placeholder only - NOT USED
-byte pinInjector8; //Placeholder only - NOT USED
+byte pinInjector3; //Output pin injector 3
+byte pinInjector4; //Output pin injector 4
+byte pinInjector5; //Output pin injector 5
+byte pinInjector6; //Output pin injector 6
+byte pinInjector7; //Output pin injector 7
+byte pinInjector8; //Output pin injector 8
 byte pinCoil1; //Pin for coil 1
 byte pinCoil2; //Pin for coil 2
 byte pinCoil3; //Pin for coil 3
