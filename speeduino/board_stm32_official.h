@@ -25,24 +25,29 @@
 #define micros_safe() micros() //timer5 method is not used on anything but AVR, the micros_safe() macro is simply an alias for the normal micros()
 #define TIMER_RESOLUTION 4
 #if defined(SRAM_AS_EEPROM)
-    #define EEPROM_LIB_H "src/BackupSram/BackupSramAsEEPROM.h"
+  #define EEPROM_LIB_H "src/BackupSram/BackupSramAsEEPROM.h"
 #elif defined(FRAM_AS_EEPROM) //https://github.com/VitorBoss/FRAM
-    #define EEPROM_LIB_H <Fram.h>
+  #define EEPROM_LIB_H "src/FRAM/Fram.h"
+  #include EEPROM_LIB_H
+  #if defined(ARDUINO_BLACK_F407VE)
+    SPIClass spiToUse(PB5, PB4, PB3); /* SPIClass(mosi, miso, sclk); */
+    FramClass EEPROM(PB0, spiToUse);
+  #else
+    SPIClass spiToUse(PB15, PB14, PB13); /* SPIClass(mosi, miso, sclk); */
+    FramClass EEPROM(PB12, spiToUse); //Blue/Black Pills
+  #endif
 #else
-    #define EEPROM_LIB_H "src/SPIAsEEPROM/SPIAsEEPROM.h"
+  #define EEPROM_LIB_H "src/SPIAsEEPROM/SPIAsEEPROM.h"
+  #include EEPROM_LIB_H
+  #if defined(USE_SPI_EEPROM)
+    SPI_EEPROM_Class EEPROM(EmulatedEEPROMMconfig);
+  #elif defined(STM32F407xx)
+    InternalSTM32F4_EEPROM_Class EEPROM(EmulatedEEPROMMconfig);
+  #endif
 #endif
 
 #ifndef LED_BUILTIN
   #define LED_BUILTIN PA7
-#endif
-
-#if defined(FRAM_AS_EEPROM)
-  #include <Fram.h>
-  #if defined(ARDUINO_BLACK_F407VE)
-  FramClass EEPROM(PB5, PB4, PB3, PB0); /*(mosi, miso, sclk, ssel, clockspeed) 31/01/2020*/
-  #else
-  FramClass EEPROM(PB15, PB14, PB13, PB12); //Blue/Black Pills
-  #endif
 #endif
 
 #define USE_SERIAL3

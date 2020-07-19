@@ -106,6 +106,7 @@
 #ifndef FLASH_AS_EEPROM_h
 #define FLASH_AS_EEPROM_h
 
+#if !defined(FRAM_AS_EEPROM) && !defined(SRAM_AS_EEPROM)
 #include <Arduino.h>
 #include "winbondflash.h"
 #include <SPI.h>
@@ -149,6 +150,12 @@ typedef struct {
   uint32_t EEPROM_Flash_BaseAddress;
 } EEPROM_Emulation_Config;
 
+static EEPROM_Emulation_Config EmulatedEEPROMMconfig{
+    FLASH_SECTORS_USED,
+    FLASH_SECTOR_SIZE,
+    EEPROM_BYTES_PER_SECTOR,
+    EEPROM_FLASH_BASEADRESS
+};
 
 //Base class for flash read and write. SPI and internal flash inherrit from this class. 
 class FLASH_EEPROM_BaseClass 
@@ -419,11 +426,12 @@ class InternalSTM32F4_EEPROM_Class : public FLASH_EEPROM_BaseClass
 //      */
 //     int8_t eraseFlashSector(uint32_t, uint32_t);
 // };
-
+/*
 #if defined(USE_SPI_EEPROM)
   extern SPI_EEPROM_Class EEPROM;
 #elif defined(STM32F407xx) && !defined(SRAM_AS_EEPROM)
   extern InternalSTM32F4_EEPROM_Class EEPROM;
 #endif
-
+*/
+#endif
 #endif

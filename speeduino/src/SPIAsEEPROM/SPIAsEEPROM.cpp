@@ -30,13 +30,6 @@
 
 #include "SPIAsEEPROM.h"
 
-static EEPROM_Emulation_Config EmulatedEEPROMMconfig{
-    FLASH_SECTORS_USED,
-    FLASH_SECTOR_SIZE,
-    EEPROM_BYTES_PER_SECTOR,
-    EEPROM_FLASH_BASEADRESS
-};
-
 // EmulatedEEPROMMconfig.Flash_Sectors_Used = FLASH_SECTORS_USED;
 
 FLASH_EEPROM_BaseClass::FLASH_EEPROM_BaseClass(EEPROM_Emulation_Config config)
@@ -434,13 +427,13 @@ int8_t InternalSTM32F4_EEPROM_Class::eraseFlashSector(uint32_t address, uint32_t
   return EraseSucceed;
 }
 #endif
-
+/*
 #if defined(USE_SPI_EEPROM)
   SPI_EEPROM_Class EEPROM(EmulatedEEPROMMconfig);
 #elif defined(STM32F407xx) & !defined(SRAM_AS_EEPROM)
   InternalSTM32F4_EEPROM_Class EEPROM(EmulatedEEPROMMconfig);
 #endif
-
+*/
 #endif
 
 
