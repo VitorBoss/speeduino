@@ -90,7 +90,11 @@ void FramClass::setClock(uint32_t clockSpeed) {
   spiSpeed = 1000000 / (clockSpeed * 2);
   #ifdef SPI_HAS_TRANSACTION
   FRAMSettings = SPISettings(clockSpeed, MSBFIRST, SPI_MODE0);
+  #if defined(ARDUINO_ARCH_STM32)
   spi->beginTransaction(csPin, FRAMSettings);
+  #else
+  spi->beginTransaction(FRAMSettings);
+  #endif
   #endif
 }
 
