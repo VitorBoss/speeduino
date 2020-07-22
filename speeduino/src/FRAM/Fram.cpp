@@ -39,7 +39,11 @@ FramClass::FramClass()
 
 /*-----------------------------------------------------------------------------*/
 
+#if defined(ARDUINO_ARCH_STM32)
+FramClass::FramClass (uint32_t ssel, SPIClass &_spi)
+#else
 FramClass::FramClass (uint8_t ssel, SPIClass &_spi)
+#endif
 {
   clkPin = mosiPin = misoPin = 255;
   begin(ssel, _spi);
@@ -47,7 +51,11 @@ FramClass::FramClass (uint8_t ssel, SPIClass &_spi)
 
 /*-----------------------------------------------------------------------------*/
 
+#if defined(ARDUINO_ARCH_STM32)
+FramClass::FramClass (uint32_t mosi, uint32_t miso, uint32_t sclk, uint32_t ssel, uint32_t clockspeed)
+#else
 FramClass::FramClass (uint8_t mosi, uint8_t miso, uint8_t sclk, uint8_t ssel, uint32_t clockspeed)
+#endif
 {
   csPin = ssel;
   clkPin = sclk;
@@ -111,7 +119,11 @@ uint8_t FramClass::isDeviceActive() {
 
 /*-----------------------------------------------------------------------------*/
 
+#if defined(ARDUINO_ARCH_STM32)
+void FramClass::begin (uint32_t ssel, SPIClass &_spi)
+#else
 void FramClass::begin (uint8_t ssel, SPIClass &_spi)
+#endif
 {
   clkPin = mosiPin = misoPin = 255;
   csPin = ssel;

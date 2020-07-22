@@ -56,12 +56,17 @@ class FramClass
 {
   public:
     FramClass();
+    #if defined(ARDUINO_ARCH_STM32)
+    FramClass(uint32_t mosi, uint32_t miso, uint32_t sclk, uint32_t ssel = FRAM_DEFAULT_CS_PIN, uint32_t clockspeed = FRAM_DEFAULT_CLOCK);
+    FramClass(uint32_t ssel = FRAM_DEFAULT_CS_PIN, SPIClass &_spi = SPI);
+    void begin (uint32_t ssel = FRAM_DEFAULT_CS_PIN, SPIClass &_spi = SPI);
+    #else
     FramClass(uint8_t mosi, uint8_t miso, uint8_t sclk, uint8_t ssel = FRAM_DEFAULT_CS_PIN, uint32_t clockspeed = FRAM_DEFAULT_CLOCK);
     FramClass(uint8_t ssel = FRAM_DEFAULT_CS_PIN, SPIClass &_spi = SPI);
-
+    void begin (uint8_t ssel = FRAM_DEFAULT_CS_PIN, SPIClass &_spi = SPI);
+    #endif
     void EnableWrite (uint8_t state);
     void setClock(uint32_t clockSpeed);
-    void begin (uint8_t csPin = FRAM_DEFAULT_CS_PIN, SPIClass &_spi = SPI);
     uint8_t write (uint16_t addr, uint8_t *data, uint16_t count);
     uint8_t write (uint16_t addr, uint8_t data);
     uint8_t read (uint16_t addr, uint8_t *dataBuffer, uint16_t count);
@@ -71,12 +76,13 @@ class FramClass
     uint8_t isDeviceActive();
 
   private:
-    uint8_t csPin, clkPin, mosiPin, misoPin;
     #if defined(ARDUINO_ARCH_STM32)
+      uint32_t csPin, clkPin, mosiPin, misoPin;
       volatile uint32_t mosiMask, *mosiPort;
       volatile uint32_t clkMask, *clkPort;
       volatile uint32_t csMask, *csPort;
     #else
+      uint8_t csPin, clkPin, mosiPin, misoPin;
       volatile uint8_t mosiMask, *mosiPort;
       volatile uint8_t clkMask, *clkPort;
       volatile uint8_t csMask, *csPort;
