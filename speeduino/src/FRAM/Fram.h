@@ -75,6 +75,22 @@ class FramClass
     uint8_t readSR ();
     uint8_t isDeviceActive();
 
+    template< typename T > T &get( int idx, T &t )
+    {
+      uint16_t e = idx;
+      uint8_t *ptr = (uint8_t*) &t;
+      for( int count = sizeof(T) ; count ; --count, ++e )  *ptr++ = read(e);
+      return t;
+    }
+    
+    template< typename T > const T &put( int idx, const T &t )
+    {
+      const uint8_t *ptr = (const uint8_t*) &t;
+      uint16_t e = idx;
+      for( int count = sizeof(T) ; count ; --count, ++e )  write(e, *ptr++);
+      return t;
+    }
+    
   private:
     #if defined(ARDUINO_ARCH_STM32)
       uint32_t csPin, clkPin, mosiPin, misoPin;
