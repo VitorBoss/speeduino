@@ -49,6 +49,7 @@ byte lastKnockCount;
 int16_t knockWindowMin; //The current minimum crank angle for a knock pulse to be valid
 int16_t knockWindowMax;//The current maximum crank angle for a knock pulse to be valid
 uint16_t aseTaperStart;
+uint16_t dfcoTaperStart;
 uint16_t dfcoStart;
 uint16_t idleAdvStart;
 
@@ -132,7 +133,20 @@ uint16_t correctionsFuel()
   if (currentStatus.launchCorrection != 100) { sumCorrections = (sumCorrections * currentStatus.launchCorrection); activeCorrections++; }
 
   bitWrite(currentStatus.status1, BIT_STATUS1_DFCO, correctionDFCO());
-  if ( BIT_CHECK(currentStatus.status1, BIT_STATUS1_DFCO) == 1 ) { sumCorrections = 0; }
+  if ( BIT_CHECK(currentStatus.status1, BIT_STATUS1_DFCO) == 1 )
+  { 
+    if (configPage9.dfcoTaperEnable == 1)
+    {
+      if ( dfcoTaperStart == 0 ) { dfcoTaperStart = runSecsX10; }
+      if ((runSecsX10 - dfcoTaperStart) <= configPage9.dfcoTaperTime)
+      { 
+        sumCorrections = map((runSecsX10 - dfcoTaperStart), 0, configPage9.dfcoTaperTime
+        , sumCorrections, (sumCorrections * configPage9.dfcoTaperFuel) / 100);
+      }
+    }
+    else { sumCorrections = 0; }
+  }
+  else { dfcoTaperStart = 0; }
 
   sumCorrections = sumCorrections / powint(100,activeCorrections);
 
@@ -684,6 +698,18 @@ int8_t correctionsIgn(int8_t base_advance)
   //Fixed timing check must go last
   advance = correctionFixedTiming(advance);
   advance = correctionCrankingFixedTiming(advance); //This overrides the regular fixed timing, must come last
+
+  if ( BIT_CHECK(currentStatus.status1, BIT_STATUS1_DFCO) == 1 )
+  { 
+    if (configPage9.dfcoTaperEnable == 1)
+    {
+      if ( dfcoTaperStart == 0 ) { dfcoTaperStart = runSecsX10; }
+      if ((runSecsX10 - dfcoTaperStart) <= configPage9.dfcoTaperTime)
+      {
+        advance -= map((runSecsX10 - dfcoTaperStart), 0, configPage9.dfcoTaperTime, 0, configPage9.dfcoTaperAdvance);
+      }
+    }
+  }
 
   return advance;
 }

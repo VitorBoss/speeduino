@@ -1162,10 +1162,11 @@ struct config9 {
   byte unused10_185;
   byte unused10_186;
   byte unused10_187;
-  byte unused10_188;
-  byte unused10_189;
-  byte unused10_190;
-  byte unused10_191;
+  byte unused10_188 : 6;
+  byte dfcoTaperEnable : 1;
+  byte dfcoTaperTime;
+  byte dfcoTaperFuel;
+  byte dfcoTaperAdvance;
   
 #if defined(CORE_AVR)
   };
