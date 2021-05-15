@@ -934,10 +934,13 @@ struct config4 {
 
   int16_t vvt2CL0DutyAng;
   byte vvt2PWMdir : 1;
-  byte unusedBits4 : 7;
+  byte dfcoTaperEnable : 1;
+  byte unusedBits4 : 6;
   byte ANGLEFILTER_VVT;
 
-  byte unused4_124[3];
+  byte dfcoTaperTime;
+  byte dfcoTaperFuel;
+  byte dfcoTaperAdvance;
 
 #if defined(CORE_AVR)
   };
