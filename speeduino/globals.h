@@ -927,7 +927,15 @@ struct config4 {
 
   byte engineProtectMaxRPM;
 
-  byte unused4_120[7];
+  int16_t unused4_121;
+  byte unused4_123 : 1;
+  byte dfcoTaperEnable : 1;
+  byte unusedBits4 : 6;
+  byte unused4_124;
+
+  byte dfcoTaperTime;
+  byte dfcoTaperFuel;
+  byte dfcoTaperAdvance;
 
 #if defined(CORE_AVR)
   };
