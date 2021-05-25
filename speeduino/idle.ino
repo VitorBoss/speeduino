@@ -541,7 +541,9 @@ void idleControl()
                 idle_pid_target_value>>2); //current PID output
               }
             }
-            else if (configPage6.iacAlgorithm == IAC_ALGORITHM_STEP_OLCL)
+            else if ((configPage6.iacAlgorithm == IAC_ALGORITHM_STEP_OLCL) ||
+                    ( currentStatus.coolant >= (int)(configPage2.dfcoMinCLT - CALIBRATION_TEMPERATURE_OFFSET) ) && ( currentStatus.RPM > (unsigned int)( (configPage4.dfcoRPM * 10) + configPage4.dfcoHyster) ) && ( currentStatus.TPS < configPage4.dfcoTPSThresh ) )
+
             {
               //Standard running
               FeedForwardTerm = (table2D_getValue(&iacStepTable, (currentStatus.coolant + CALIBRATION_TEMPERATURE_OFFSET)) * 3); //All temps are offset by 40 degrees. Step counts are divided by 3 in TS. Multiply back out here
