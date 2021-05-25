@@ -552,12 +552,11 @@ void idleControl()
             if (configPage6.iacAlgorithm == IAC_ALGORITHM_STEP_OLCL)
             {
               //reset integeral to zero when TPS is bigger than set value in TS (opening throttle so not idle anymore). OR when RPM higher than Idle Target + RPM Histeresis (comming back from high rpm with throttle closed) 
-              if ((((int16_t)currentStatus.RPMdiv100 - currentStatus.CLIdleTarget) > configPage2.iacRPMlimitHysteresis)
-                || (currentStatus.TPS > configPage2.iacTPSlimit) || onGoingDFCO) { idlePID.ResetIntegeral(); }
+              if ((((int16_t)currentStatus.RPMdiv100 - currentStatus.CLIdleTarget) > configPage2.iacRPMlimitHysteresis) || (currentStatus.TPS > configPage2.iacTPSlimit)) { idlePID.ResetIntegeral(); }
             }
             else { FeedForwardTerm = 0; }
             PID_computed = idlePID.Compute(true, FeedForwardTerm<<2);
-            if((currentStatus.TPS > configPage2.iacTPSlimit) || (runSecsX10 < configPage2.idleTaperTime)) { idleStepper.targetIdleStep = FeedForwardTerm; }
+            if((currentStatus.TPS > configPage2.iacTPSlimit) || (runSecsX10 < configPage2.idleTaperTime) || onGoingDFCO) { idleStepper.targetIdleStep = FeedForwardTerm; }
             else { idleStepper.targetIdleStep = idle_pid_target_value>>2; }//Increase resolution
 
             if(currentStatus.idleUpActive == true) { idleStepper.targetIdleStep += configPage2.idleUpAdder; } //Add Idle Up amount if active
