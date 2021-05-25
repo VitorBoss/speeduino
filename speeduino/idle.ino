@@ -273,6 +273,7 @@ void idleControl()
   else { currentStatus.idleUpActive = false; }
 
   bool PID_computed = false;
+  bool onGoingDFCO = (( currentStatus.coolant >= (int)(configPage2.dfcoMinCLT - CALIBRATION_TEMPERATURE_OFFSET) ) && ( currentStatus.RPM > (unsigned int)( (configPage4.dfcoRPM * 10) + configPage4.dfcoHyster) ) && ( currentStatus.TPS < configPage4.dfcoTPSThresh ));
   if (BIT_CHECK(currentStatus.status1, BIT_STATUS1_DFCO) == 0)
   {
     switch(configPage6.iacAlgorithm)
@@ -541,9 +542,7 @@ void idleControl()
                 idle_pid_target_value>>2); //current PID output
               }
             }
-            else if ((configPage6.iacAlgorithm == IAC_ALGORITHM_STEP_OLCL) ||
-                    ( currentStatus.coolant >= (int)(configPage2.dfcoMinCLT - CALIBRATION_TEMPERATURE_OFFSET) ) && ( currentStatus.RPM > (unsigned int)( (configPage4.dfcoRPM * 10) + configPage4.dfcoHyster) ) && ( currentStatus.TPS < configPage4.dfcoTPSThresh ) )
-
+            else if (configPage6.iacAlgorithm == IAC_ALGORITHM_STEP_OLCL)
             {
               //Standard running
               FeedForwardTerm = (table2D_getValue(&iacStepTable, (currentStatus.coolant + CALIBRATION_TEMPERATURE_OFFSET)) * 3); //All temps are offset by 40 degrees. Step counts are divided by 3 in TS. Multiply back out here
@@ -553,7 +552,8 @@ void idleControl()
             if (configPage6.iacAlgorithm == IAC_ALGORITHM_STEP_OLCL)
             {
               //reset integeral to zero when TPS is bigger than set value in TS (opening throttle so not idle anymore). OR when RPM higher than Idle Target + RPM Histeresis (comming back from high rpm with throttle closed) 
-              if ((((int16_t)currentStatus.RPMdiv100 - currentStatus.CLIdleTarget) > configPage2.iacRPMlimitHysteresis) || (currentStatus.TPS > configPage2.iacTPSlimit)) { idlePID.ResetIntegeral(); }
+              if ((((int16_t)currentStatus.RPMdiv100 - currentStatus.CLIdleTarget) > configPage2.iacRPMlimitHysteresis)
+                || (currentStatus.TPS > configPage2.iacTPSlimit) || onGoingDFCO) { idlePID.ResetIntegeral(); }
             }
             else { FeedForwardTerm = 0; }
             PID_computed = idlePID.Compute(true, FeedForwardTerm<<2);
