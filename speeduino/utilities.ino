@@ -520,7 +520,7 @@ int16_t ProgrammableIOGetData(uint16_t index)
     
     for(x = 0; x<sizeof(fsIntIndex); x++)
     {
-      if (fsIntIndex[x] == index) { break; }
+      if (pgm_read_byte(&(fsIntIndex[x])) == index) { break; }
     }
     if (x >= sizeof(fsIntIndex)) { result = getStatusEntry(index); }
     else { result = word(getStatusEntry(index+1), getStatusEntry(index)); }
