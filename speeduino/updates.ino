@@ -459,7 +459,7 @@ void doUpdates()
     writeAllConfig();
     EEPROM.write(EEPROM_DATA_VERSION, 17);
   }
-  
+
   //Final check is always for 255 and 0 (Brand new arduino)
   if( (EEPROM.read(EEPROM_DATA_VERSION) == 0) || (EEPROM.read(EEPROM_DATA_VERSION) == 255) )
   {

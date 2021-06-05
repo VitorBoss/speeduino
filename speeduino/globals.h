@@ -502,7 +502,7 @@ extern int ignition7StartAngle;
 extern int ignition8StartAngle;
 
 //These are variables used across multiple files
-extern const byte PROGMEM fsIntIndex[30];
+extern const byte PROGMEM fsIntIndex[];
 extern bool initialisationComplete; //Tracks whether the setup() function has run completely
 extern byte fpPrimeTime; //The time (in seconds, based on currentStatus.secl) that the fuel pump started priming
 extern uint32_t injPrimeTime; //The time (in 0.1 seconds, based on seclx10) that the fuel pump started priming
@@ -1320,7 +1320,9 @@ struct config13 {
   uint8_t outputDelay[8]; //0.1S
   uint8_t firstDataIn[8];
   uint8_t secondDataIn[8];
-  uint8_t unused_13[16];
+  uint8_t minOutputTime[8]; //0.1S
+
+  uint8_t unused_13[8];
   int16_t firstTarget[8];
   int16_t secondTarget[8];
   //89bytes

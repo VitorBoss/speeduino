@@ -15,6 +15,9 @@
 #include "src/FastCRC/FastCRC.h"
 
 FastCRC32 CRC32;
+uint8_t ioDelay[sizeof(configPage13.outputPin)];
+uint8_t ioOutDelay[sizeof(configPage13.outputPin)];
+uint8_t pinIsValid = 0;
 
 //This function performs a translation between the pin list that appears in TS and the actual pin numbers
 //For the digital IO, this will simply return the same number as the rawPin value as those are mapped directly.
@@ -442,6 +445,7 @@ void initialiseProgrammableIO()
       {
         pinMode(configPage13.outputPin[y], OUTPUT);
         digitalWrite(configPage13.outputPin[y], (configPage13.outputInverted & (1U << y)));
+        bitWrite(currentStatus.outputsStatus, y, (configPage13.outputInverted & (1U << y)));
         BIT_SET(pinIsValid, y);
       }
     }
@@ -469,6 +473,8 @@ void checkProgrammableIO()
       else if ( (configPage13.operation[y].firstCompType == COMPARATOR_GREATER_EQUAL) && (data >= data2) ) { firstCheck = true; }
       else if ( (configPage13.operation[y].firstCompType == COMPARATOR_LESS) && (data < data2) ) { firstCheck = true; }
       else if ( (configPage13.operation[y].firstCompType == COMPARATOR_LESS_EQUAL) && (data <= data2) ) { firstCheck = true; }
+      else if ( (configPage13.operation[y].firstCompType == COMPARATOR_AND) && ((data & data2) != 0) ) { firstCheck = true; }
+      else if ( (configPage13.operation[y].firstCompType == COMPARATOR_XOR) && ((data ^ data2) != 0) ) { firstCheck = true; }
 
       if (configPage13.operation[y].bitwise != BITWISE_DISABLED)
       {
@@ -483,6 +489,8 @@ void checkProgrammableIO()
           else if ( (configPage13.operation[y].secondCompType == COMPARATOR_GREATER_EQUAL) && (data >= data2) ) { secondCheck = true; }
           else if ( (configPage13.operation[y].secondCompType == COMPARATOR_LESS) && (data < data2) ) { secondCheck = true; }
           else if ( (configPage13.operation[y].secondCompType == COMPARATOR_LESS_EQUAL) && (data <= data2) ) { secondCheck = true; }
+          else if ( (configPage13.operation[y].secondCompType == COMPARATOR_AND) && ((data & data2) != 0) ) { secondCheck = true; }
+          else if ( (configPage13.operation[y].secondCompType == COMPARATOR_XOR) && ((data ^ data2) != 0) ) { secondCheck = true; }
 
           if (configPage13.operation[y].bitwise == BITWISE_AND) { firstCheck &= secondCheck; }
           if (configPage13.operation[y].bitwise == BITWISE_OR) { firstCheck |= secondCheck; }
@@ -491,23 +499,29 @@ void checkProgrammableIO()
       }
       
 
-      if ( (firstCheck == true) && (configPage13.outputDelay[y] != 0) && (configPage13.outputDelay[y] < 255) )
+      if ( (firstCheck == true) && (configPage13.outputDelay[y] < 255) )
       {
-        if ( (ioDelay[y] >= configPage13.outputDelay[y]) )
+        if (ioDelay[y] >= configPage13.outputDelay[y])
         {
-          if (configPage13.outputPin[y] <= 128) { digitalWrite(configPage13.outputPin[y], (configPage13.outputInverted & (1U << y)) ^ firstCheck); }
+          if (BIT_CHECK(currentStatus.outputsStatus, y) && (ioOutDelay[y] < configPage13.minOutputTime[y])) { ioOutDelay[y]++; }
+          digitalWrite(configPage13.outputPin[y], (configPage13.outputInverted & (1U << y)) ^ firstCheck);
+          bitWrite(currentStatus.outputsStatus, y, firstCheck);
         }
         else { ioDelay[y]++; }
       }
       else
       {
-        if ( configPage13.outputPin[y] <= 128 ) { digitalWrite(configPage13.outputPin[y], (configPage13.outputInverted & (1U << y)) ^ firstCheck); }
+        if (ioOutDelay[y] >= configPage13.minOutputTime[y])
+        {
+          digitalWrite(configPage13.outputPin[y], (configPage13.outputInverted & (1U << y)) ^ firstCheck);
+          bitWrite(currentStatus.outputsStatus, y, firstCheck);
+          ioOutDelay[y] = 0;
+        }
+        else { ioOutDelay[y]++; }
+
         if ( firstCheck == false ) { ioDelay[y] = 0; }
       }
-      if ( firstCheck == true ) { BIT_SET(currentStatus.outputsStatus, y); }
-      else { BIT_CLEAR(currentStatus.outputsStatus, y); }
     }
-    else { BIT_CLEAR(currentStatus.outputsStatus, y); }
   }
 }
 
