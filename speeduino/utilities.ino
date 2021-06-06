@@ -18,6 +18,7 @@ FastCRC32 CRC32;
 uint8_t ioDelay[sizeof(configPage13.outputPin)];
 uint8_t ioOutDelay[sizeof(configPage13.outputPin)];
 uint8_t pinIsValid = 0;
+uint8_t currentRuleStatus = 0;
 
 //This function performs a translation between the pin list that appears in TS and the actual pin numbers
 //For the digital IO, this will simply return the same number as the rawPin value as those are mapped directly.
@@ -437,17 +438,27 @@ void changeFullToHalfSync(void)
 //*********************************************************************************************************************************************************************************
 void initialiseProgrammableIO()
 {
+  uint8_t outputPin;
   for (uint8_t y = 0; y < sizeof(configPage13.outputPin); y++)
   {
-    if ( (configPage13.outputPin[y] > 0) && (configPage13.outputPin[y] < BOARD_MAX_DIGITAL_PINS) )
+    ioDelay[y] = 0;
+    ioOutDelay[y] = 0;
+    outputPin = configPage13.outputPin[y];
+    if (outputPin > 0)
     {
-      if ( !pinIsUsed(configPage13.outputPin[y]) )
+      if ( (outputPin >= REUSE_RULES) && (outputPin <= (REUSE_RULES + sizeof(configPage13.outputPin))) ) //Cascate rule usage
       {
-        pinMode(configPage13.outputPin[y], OUTPUT);
-        digitalWrite(configPage13.outputPin[y], (configPage13.outputInverted & (1U << y)));
-        bitWrite(currentStatus.outputsStatus, y, (configPage13.outputInverted & (1U << y)));
+        BIT_WRITE(currentStatus.outputsStatus, y, BIT_CHECK(configPage13.outputInverted, y));
         BIT_SET(pinIsValid, y);
       }
+      else if ( !pinIsUsed(outputPin) )
+      {
+        pinMode(outputPin, OUTPUT);
+        digitalWrite(outputPin, BIT_CHECK(configPage13.outputInverted, y));
+        BIT_WRITE(currentStatus.outputsStatus, y, BIT_CHECK(configPage13.outputInverted, y));
+        BIT_SET(pinIsValid, y);
+      }
+      else { BIT_CLEAR(pinIsValid, y); }
     }
   }
 }
@@ -455,6 +466,7 @@ void initialiseProgrammableIO()
 void checkProgrammableIO()
 {
   int16_t data, data2;
+  uint8_t dataRequested;
   bool firstCheck, secondCheck;
 
   for (uint8_t y = 0; y < sizeof(configPage13.outputPin); y++)
@@ -462,9 +474,15 @@ void checkProgrammableIO()
     firstCheck = false;
     secondCheck = false;
     if ( BIT_CHECK(pinIsValid, y) ) //if outputPin == 0 it is disabled
-    { 
-      //byte theIndex = configPage13.firstDataIn[y];
-      data = ProgrammableIOGetData(configPage13.firstDataIn[y]);
+    {
+      dataRequested = configPage13.firstDataIn[y];
+      if ( dataRequested > 239U ) //Somehow using 239 uses 9 bytes of RAM, why??
+      {
+        dataRequested -= REUSE_RULES;
+        if ( dataRequested <= sizeof(configPage13.outputPin) ) { data = BIT_CHECK(currentRuleStatus, dataRequested); }
+        else { data = 0; }
+      }
+      else { data = ProgrammableIOGetData(dataRequested); }
       data2 = configPage13.firstTarget[y];
 
       if ( (configPage13.operation[y].firstCompType == COMPARATOR_EQUAL) && (data == data2) ) { firstCheck = true; }
@@ -478,9 +496,15 @@ void checkProgrammableIO()
 
       if (configPage13.operation[y].bitwise != BITWISE_DISABLED)
       {
-        if ( configPage13.secondDataIn[y] < LOG_ENTRY_SIZE ) //Failsafe check
+        dataRequested = configPage13.secondDataIn[y];
+        if ( dataRequested <= (REUSE_RULES + sizeof(configPage13.outputPin)) ) //Failsafe check
         {
-          data = ProgrammableIOGetData(configPage13.secondDataIn[y]);
+          if ( dataRequested > 239U ) //Somehow using 239 uses 9 bytes of RAM, why??
+          {
+            dataRequested -= REUSE_RULES;
+            data = BIT_CHECK(currentRuleStatus, dataRequested);
+          }
+          else { data = ProgrammableIOGetData(dataRequested); }
           data2 = configPage13.secondTarget[y];
           
           if ( (configPage13.operation[y].secondCompType == COMPARATOR_EQUAL) && (data == data2) ) { secondCheck = true; }
@@ -498,23 +522,29 @@ void checkProgrammableIO()
         }
       }
       
+      //If the limiting time is active(>0), using maximum time and time has counted, disable the output
+      if ((configPage13.outputTimeLimit[y] > 0) && BIT_CHECK(configPage13.kindOfLimiting, y) && (ioOutDelay[y] >= configPage13.outputTimeLimit[y])) { firstCheck = false; }
 
       if ( (firstCheck == true) && (configPage13.outputDelay[y] < 255) )
       {
         if (ioDelay[y] >= configPage13.outputDelay[y])
         {
-          if (BIT_CHECK(currentStatus.outputsStatus, y) && (ioOutDelay[y] < configPage13.minOutputTime[y])) { ioOutDelay[y]++; }
-          digitalWrite(configPage13.outputPin[y], (configPage13.outputInverted & (1U << y)) ^ firstCheck);
-          bitWrite(currentStatus.outputsStatus, y, firstCheck);
+          bool bitStatus = BIT_CHECK(configPage13.outputInverted, y) ^ firstCheck;
+          if (BIT_CHECK(currentStatus.outputsStatus, y) && (ioOutDelay[y] < configPage13.outputTimeLimit[y])) { ioOutDelay[y]++; }
+          if (configPage13.outputPin[y] < 128) { digitalWrite(configPage13.outputPin[y], bitStatus); }
+          else { BIT_WRITE(currentRuleStatus, y, bitStatus); }
+          BIT_WRITE(currentStatus.outputsStatus, y, firstCheck);
         }
         else { ioDelay[y]++; }
       }
       else
       {
-        if (ioOutDelay[y] >= configPage13.minOutputTime[y])
+        if (ioOutDelay[y] >= configPage13.outputTimeLimit[y])
         {
-          digitalWrite(configPage13.outputPin[y], (configPage13.outputInverted & (1U << y)) ^ firstCheck);
-          bitWrite(currentStatus.outputsStatus, y, firstCheck);
+          bool bitStatus = BIT_CHECK(configPage13.outputInverted, y) ^ firstCheck;
+          if (configPage13.outputPin[y] < 128) { digitalWrite(configPage13.outputPin[y], bitStatus); }
+          else { BIT_WRITE(currentRuleStatus, y, bitStatus); }
+          BIT_WRITE(currentStatus.outputsStatus, y, firstCheck);
           ioOutDelay[y] = 0;
         }
         else { ioOutDelay[y]++; }
@@ -543,6 +573,7 @@ int16_t ProgrammableIOGetData(uint16_t index)
     //Special cases for temperatures
     if( (index == 6) || (index == 7) ) { result -= CALIBRATION_TEMPERATURE_OFFSET; }
   }
+  else if ( index == 239U ) { result = max((int16_t)runSecsX10, 32768); }
   else { result = -1; } //Index is bigger than fullStatus array
   return result;
 }

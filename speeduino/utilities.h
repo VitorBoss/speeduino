@@ -22,9 +22,13 @@ These are some utility functions and variables used through the main code
 #define BITWISE_OR 2
 #define BITWISE_XOR 3
 
+#define REUSE_RULES 240
+
 extern uint8_t ioOutDelay[sizeof(configPage13.outputPin)];
 extern uint8_t ioDelay[sizeof(configPage13.outputPin)];
 extern uint8_t pinIsValid;
+extern uint8_t currentRuleStatus;
+//uint8_t outputPin[sizeof(configPage13.outputPin)];
 
 void setResetControlPinState();
 byte pinTranslate(byte);

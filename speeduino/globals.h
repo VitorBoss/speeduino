@@ -130,6 +130,7 @@
 #define BIT_CLEAR(a,b) ((a) &= ~(1U<<(b)))
 #define BIT_CHECK(var,pos) !!((var) & (1U<<(pos)))
 #define BIT_TOGGLE(var,pos) ((var)^= 1UL << (pos))
+#define BIT_WRITE(var, pos, bitvalue) ((bitvalue) ? BIT_SET(var, pos) : bitClear(var, pos))
 
 #define interruptSafe(c) (noInterrupts(); {c} interrupts();) //Wraps any code between nointerrupt and interrupt calls
 
@@ -1315,12 +1316,12 @@ Page 13 - Programmable outputs conditions.
 */
 struct config13 {
   uint8_t outputInverted;
-  uint8_t unused12_1;
+  uint8_t kindOfLimiting;
   uint8_t outputPin[8];
   uint8_t outputDelay[8]; //0.1S
   uint8_t firstDataIn[8];
   uint8_t secondDataIn[8];
-  uint8_t minOutputTime[8]; //0.1S
+  uint8_t outputTimeLimit[8]; //0.1S
 
   uint8_t unused_13[8];
   int16_t firstTarget[8];
