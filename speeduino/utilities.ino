@@ -523,7 +523,11 @@ void checkProgrammableIO()
       }
       
       //If the limiting time is active(>0), using maximum time and time has counted, disable the output
-      if ((configPage13.outputTimeLimit[y] > 0) && BIT_CHECK(configPage13.kindOfLimiting, y) && (ioOutDelay[y] >= configPage13.outputTimeLimit[y])) { firstCheck = false; }
+      if (BIT_CHECK(configPage13.kindOfLimiting, y))
+      {
+        if (!firstCheck) { ioOutDelay[y] = 0; }
+        if ((configPage13.outputTimeLimit[y] > 0) && (ioOutDelay[y] >= configPage13.outputTimeLimit[y])) { firstCheck = false; }
+      }
 
       if ( (firstCheck == true) && (configPage13.outputDelay[y] < 255) )
       {
@@ -545,7 +549,7 @@ void checkProgrammableIO()
           if (configPage13.outputPin[y] < 128) { digitalWrite(configPage13.outputPin[y], bitStatus); }
           else { BIT_WRITE(currentRuleStatus, y, bitStatus); }
           BIT_WRITE(currentStatus.outputsStatus, y, firstCheck);
-          ioOutDelay[y] = 0;
+          if(!BIT_CHECK(configPage13.kindOfLimiting, y)) { ioOutDelay[y] = 0; }
         }
         else { ioOutDelay[y]++; }
 
