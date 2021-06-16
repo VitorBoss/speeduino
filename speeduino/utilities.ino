@@ -450,7 +450,7 @@ void initialiseProgrammableIO()
     outputPin = configPage13.outputPin[y];
     if (outputPin > 0)
     {
-      if ( (outputPin >= REUSE_RULES) && (outputPin <= (REUSE_RULES + sizeof(configPage13.outputPin))) ) //Cascate rule usage
+      if ( outputPin >= 128 ) //Cascate rule usage
       {
         BIT_WRITE(currentStatus.outputsStatus, y, BIT_CHECK(configPage13.outputInverted, y));
         BIT_SET(pinIsValid, y);

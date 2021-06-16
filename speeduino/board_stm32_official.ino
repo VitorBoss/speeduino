@@ -68,6 +68,7 @@ STM32RTC& rtc = STM32RTC::getInstance();
       #else
       Timer11.attachInterrupt(oneMSInterval);
       #endif
+      Timer11.setInterruptPriority(14, 0);
       Timer11.resume(); //Start Timer
     #endif
     pinMode(LED_BUILTIN, OUTPUT); //Visual WDT
@@ -90,6 +91,7 @@ STM32RTC& rtc = STM32RTC::getInstance();
     #endif
     Timer1.attachInterrupt(2, boostInterrupt);
     Timer1.attachInterrupt(3, vvtInterrupt);
+    Timer1.setInterruptPriority(13, 0);
 
     /*
     ***********************************************************************************************************
@@ -132,6 +134,7 @@ STM32RTC& rtc = STM32RTC::getInstance();
     Timer3.attachInterrupt(2, fuelSchedule2Interrupt);
     Timer3.attachInterrupt(3, fuelSchedule3Interrupt);
     Timer3.attachInterrupt(4, fuelSchedule4Interrupt);
+    Timer3.setInterruptPriority(10, 0);
     #if (INJ_CHANNELS >= 5)
     Timer5.setOverflow(0xFFFF, TICK_FORMAT);
     Timer5.setPrescaleFactor(((Timer5.getTimerClkFreq()/1000000) * TIMER_RESOLUTION)-1);   //4us resolution
@@ -141,6 +144,7 @@ STM32RTC& rtc = STM32RTC::getInstance();
     Timer5.setMode(1, TIMER_OUTPUT_COMPARE_TOGGLE);
     #endif
     Timer5.attachInterrupt(1, fuelSchedule5Interrupt);
+    Timer5.setInterruptPriority(10, 1);
     #endif
     #if (INJ_CHANNELS >= 6)
     #if ( STM32_CORE_VERSION_MAJOR < 2 )
@@ -172,6 +176,7 @@ STM32RTC& rtc = STM32RTC::getInstance();
     Timer2.attachInterrupt(2, ignitionSchedule2Interrupt);
     Timer2.attachInterrupt(3, ignitionSchedule3Interrupt);
     Timer2.attachInterrupt(4, ignitionSchedule4Interrupt);
+    Timer2.setInterruptPriority(9, 0);
     #if (IGN_CHANNELS >= 5)
     Timer4.setOverflow(0xFFFF, TICK_FORMAT);
     Timer4.setPrescaleFactor(((Timer4.getTimerClkFreq()/1000000) * TIMER_RESOLUTION)-1);   //4us resolution
@@ -181,6 +186,7 @@ STM32RTC& rtc = STM32RTC::getInstance();
     Timer4.setMode(1, TIMER_OUTPUT_COMPARE_TOGGLE);
     #endif
     Timer4.attachInterrupt(1, ignitionSchedule5Interrupt);
+    Timer4.setInterruptPriority(9, 1);
     #endif
     #if (IGN_CHANNELS >= 6)
     #if ( STM32_CORE_VERSION_MAJOR < 2 )
