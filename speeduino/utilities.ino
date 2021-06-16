@@ -541,7 +541,7 @@ void checkProgrammableIO()
           if (BIT_CHECK(currentStatus.outputsStatus, y) && (ioOutDelay[y] < configPage13.outputTimeLimit[y])) { ioOutDelay[y]++; }
           if (configPage13.outputPin[y] < 128) { digitalWrite(configPage13.outputPin[y], bitStatus); }
           else { BIT_WRITE(currentRuleStatus, y, bitStatus); }
-          BIT_WRITE(currentStatus.outputsStatus, y, firstCheck);
+          BIT_WRITE(currentStatus.outputsStatus, y, bitStatus);
         }
         else { ioDelay[y]++; }
       }
@@ -552,7 +552,7 @@ void checkProgrammableIO()
           bool bitStatus = BIT_CHECK(configPage13.outputInverted, y) ^ firstCheck;
           if (configPage13.outputPin[y] < 128) { digitalWrite(configPage13.outputPin[y], bitStatus); }
           else { BIT_WRITE(currentRuleStatus, y, bitStatus); }
-          BIT_WRITE(currentStatus.outputsStatus, y, firstCheck);
+          BIT_WRITE(currentStatus.outputsStatus, y, bitStatus);
           if(!BIT_CHECK(configPage13.kindOfLimiting, y)) { ioOutDelay[y] = 0; }
         }
         else { ioOutDelay[y]++; }
