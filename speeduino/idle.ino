@@ -549,6 +549,12 @@ void idleControl()
             }
             else { FeedForwardTerm = idle_pid_target_value>>2; }
 
+            if (configPage6.iacAlgorithm == IAC_ALGORITHM_STEP_OLCL)
+            {
+              //reset integeral to zero when TPS is bigger than set value in TS (opening throttle so not idle anymore). OR when RPM higher than Idle Target + RPM Histeresis (comming back from high rpm with throttle closed) 
+              if ((((int16_t)currentStatus.RPMdiv100 - currentStatus.CLIdleTarget) > configPage2.iacRPMlimitHysteresis) || (currentStatus.TPS > configPage2.iacTPSlimit)) { idlePID.ResetIntegeral(); }
+            }
+
             if ( (configPage6.iacAlgorithm != IAC_ALGORITHM_STEP_OLCL) || (runSecsX10 >= configPage2.idleTaperTime) ) { PID_computed = idlePID.Compute(true, FeedForwardTerm<<2); }
 
             if((currentStatus.TPS > configPage2.iacTPSlimit) || (runSecsX10 < configPage2.idleTaperTime) || onGoingDFCO) { idleStepper.targetIdleStep = FeedForwardTerm; }
