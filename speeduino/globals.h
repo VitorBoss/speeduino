@@ -506,10 +506,8 @@ extern int ignition8StartAngle;
 extern const byte PROGMEM fsIntIndex[];
 extern bool initialisationComplete; //Tracks whether the setup() function has run completely
 extern byte fpPrimeTime; //The time (in seconds, based on currentStatus.secl) that the fuel pump started priming
-extern uint32_t injPrimeTime; //The time (in 0.1 seconds, based on seclx10) that the fuel pump started priming
-extern volatile uint16_t mainLoopCount;
+extern uint16_t softStartTime; //The time (in 0.1 seconds, based on seclx10) that the soft limiter started
 extern unsigned long revolutionTime; //The time in uS that one revolution would take at current speed (The time tooth 1 was last seen, minus the time it was seen prior to that)
-extern volatile unsigned long timer5_overflow_count; //Increments every time counter 5 overflows. Used for the fast version of micros()
 extern volatile unsigned long ms_counter; //A counter that increments once per ms
 extern uint16_t fixedCrankingOverride;
 extern bool clutchTrigger;
@@ -878,21 +876,21 @@ struct config4 {
   byte useDwellLim : 1; //Whether the dwell limiter is off or on
   byte sparkMode : 3; //Spark output mode (Eg Wasted spark, single channel or Wasted COP)
   byte triggerFilter : 2; //The mode of trigger filter being used (0=Off, 1=Light (Not currently used), 2=Normal, 3=Aggressive)
-  byte ignCranklock : 1; //Whether or not the ignition timing during cranking is locked to a CAS pulse. Only currently valid for Basic distributor and 4G63.
+  byte ignCranklock : 1; //Whether or not the ignition timing during cranking is locked to a CAS (crank) pulse. Only currently valid for Basic distributor and 4G63.
 
-  byte dwellCrank; //Dwell time whilst cranking
-  byte dwellRun; //Dwell time whilst running
-  byte triggerTeeth; //The full count of teeth on the trigger wheel if there were no gaps
-  byte triggerMissingTeeth; //The size of the tooth gap (ie number of missing teeth)
-  byte crankRPM; //RPM below which the engine is considered to be cranking
-  byte floodClear; //TPS value that triggers flood clear mode (No fuel whilst cranking)
-  byte SoftRevLim; //Soft rev limit (RPM/100)
-  byte SoftLimRetard; //Amount soft limit retards (degrees)
-  byte SoftLimMax; //Time the soft limit can run
-  byte HardRevLim; //Hard rev limit (RPM/100)
-  byte taeBins[4]; //TPS based acceleration enrichment bins (%/s)
-  byte taeValues[4]; //TPS based acceleration enrichment rates (% to add)
-  byte wueBins[10]; //Warmup Enrichment bins (Values are in configTable1)
+  byte dwellCrank;    ///< Dwell time whilst cranking
+  byte dwellRun;      ///< Dwell time whilst running
+  byte triggerTeeth;  ///< The full count of teeth on the trigger wheel if there were no gaps
+  byte triggerMissingTeeth; ///< The size of the tooth gap (ie number of missing teeth)
+  byte crankRPM;      ///< RPM below which the engine is considered to be cranking
+  byte floodClear;    ///< TPS (raw adc count? % ?) value that triggers flood clear mode (No fuel whilst cranking, See @ref correctionFloodClear())
+  byte SoftRevLim;    ///< Soft rev limit (RPM/100)
+  byte SoftLimRetard; ///< Amount soft limit (ignition) retard (degrees)
+  byte SoftLimMax;    ///< Time the soft limit can run (units 0.1S)
+  byte HardRevLim;    ///< Hard rev limit (RPM/100)
+  byte taeBins[4];    ///< TPS based acceleration enrichment bins (Unit: %/s)
+  byte taeValues[4];  ///< TPS based acceleration enrichment rates (Unit: % to add), values matched to thresholds of taeBins
+  byte wueBins[10];   ///< Warmup Enrichment bins (Values are in @ref configPage2.wueValues OLD:configTable1)
   byte dwellLimit;
   byte dwellCorrectionValues[6]; //Correction table for dwell vs battery voltage
   byte iatRetBins[6]; // Inlet Air Temp timing retard curve bins
