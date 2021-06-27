@@ -210,7 +210,7 @@ static inline uint16_t stdGetRPM(uint16_t degreesOver)
 {
   uint16_t tempRPM = 0;
 
-  if( currentStatus.hasSync == true )
+  if( currentStatus.hasSync || BIT_CHECK(currentStatus.status3, BIT_STATUS3_HALFSYNC) )
   {
     if( (currentStatus.RPM < currentStatus.crankRPM) && (currentStatus.startRevolutions == 0) ) { tempRPM = 0; } //Prevents crazy RPM spike when there has been less than 1 full revolution
     else if( (toothOneTime == 0) || (toothOneMinusOneTime == 0) ) { tempRPM = 0; }
