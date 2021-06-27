@@ -460,6 +460,12 @@ void doUpdates()
     EEPROM.write(EEPROM_DATA_VERSION, 17);
   }
 
+  if(EEPROM.read(EEPROM_DATA_VERSION) == 17)
+  {
+    configPage2.IdleAdvDelay *= 2; //Increased resolution to 0.5 second
+    //writeAllConfig();
+    //EEPROM.write(EEPROM_DATA_VERSION, 19);
+  }
   //Final check is always for 255 and 0 (Brand new arduino)
   if( (EEPROM.read(EEPROM_DATA_VERSION) == 0) || (EEPROM.read(EEPROM_DATA_VERSION) == 255) )
   {
