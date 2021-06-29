@@ -119,13 +119,13 @@ uint16_t correctionsFuel()
   bitWrite(currentStatus.status1, BIT_STATUS1_DFCO, correctionDFCO());
   if ( BIT_CHECK(currentStatus.status1, BIT_STATUS1_DFCO) == 1 )
   { 
-    if (configPage4.dfcoTaperEnable == 1)
+    if (configPage9.dfcoTaperEnable == 1)
     {
       if ( dfcoTaperStart == 0 ) { dfcoTaperStart = runSecsX10; }
-      if ((runSecsX10 - dfcoTaperStart) <= configPage4.dfcoTaperTime)
+      if ((runSecsX10 - dfcoTaperStart) <= configPage9.dfcoTaperTime)
       { 
-        sumCorrections = map((runSecsX10 - dfcoTaperStart), 0, configPage4.dfcoTaperTime
-        , sumCorrections, (sumCorrections * configPage4.dfcoTaperFuel) / 100);
+        sumCorrections = map((runSecsX10 - dfcoTaperStart), 0, configPage9.dfcoTaperTime
+        , sumCorrections, (sumCorrections * configPage9.dfcoTaperFuel) / 100);
       }
     }
     else { sumCorrections = 0; }
@@ -692,12 +692,12 @@ int8_t correctionsIgn(int8_t base_advance)
 
   if ( BIT_CHECK(currentStatus.status1, BIT_STATUS1_DFCO) == 1 )
   { 
-    if (configPage4.dfcoTaperEnable == 1)
+    if (configPage9.dfcoTaperEnable == 1)
     {
       if ( dfcoTaperStart == 0 ) { dfcoTaperStart = runSecsX10; }
-      if ((runSecsX10 - dfcoTaperStart) <= configPage4.dfcoTaperTime)
+      if ((runSecsX10 - dfcoTaperStart) <= configPage9.dfcoTaperTime)
       {
-        advance -= map((runSecsX10 - dfcoTaperStart), 0, configPage4.dfcoTaperTime, 0, configPage4.dfcoTaperAdvance);
+        advance -= map((runSecsX10 - dfcoTaperStart), 0, configPage9.dfcoTaperTime, 0, configPage9.dfcoTaperAdvance);
       }
     }
   }

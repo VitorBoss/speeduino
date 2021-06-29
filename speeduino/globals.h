@@ -930,15 +930,12 @@ struct config4 {
 
   byte engineProtectMaxRPM;
 
-  int16_t unused4_121;
-  byte unused4_123 : 1;
-  byte dfcoTaperEnable : 1;
-  byte unusedBits4 : 6;
-  byte unused4_124;
-
-  byte dfcoTaperTime;
-  byte dfcoTaperFuel;
-  byte dfcoTaperAdvance;
+  int16_t vvt2CL0DutyAng;
+  byte vvt2PWMdir : 1;
+  byte unusedBits4 : 7;
+  byte ANGLEFILTER_VVT;
+  byte RPM_FILTER;
+  byte unused4_124[2];
 
 #if defined(CORE_AVR)
   };
@@ -1114,10 +1111,11 @@ struct config9 {
   byte unused10_185;
   byte unused10_186;
   byte unused10_187;
-  byte unused10_188;
-  byte unused10_189;
-  byte unused10_190;
-  byte unused10_191;
+  byte unused10_188 : 6;
+  byte dfcoTaperEnable : 1;
+  byte dfcoTaperTime;
+  byte dfcoTaperFuel;
+  byte dfcoTaperAdvance;
   
 #if defined(CORE_AVR)
   };
