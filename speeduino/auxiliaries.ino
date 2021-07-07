@@ -149,7 +149,7 @@ void boostControl()
     if(configPage4.boostType == OPEN_LOOP_BOOST)
     {
       //Open loop
-      currentStatus.boostDuty = get3DTableValue(&boostTable, currentStatus.TPS, currentStatus.RPM) * 2 * 100;
+      currentStatus.boostDuty = get3DTableValue(&boostTable, currentStatus.TPS/2, currentStatus.RPM) * 2 * 100;
 
       if(currentStatus.boostDuty > 10000) { currentStatus.boostDuty = 10000; } //Safety check
       if(currentStatus.boostDuty == 0) { DISABLE_BOOST_TIMER(); BOOST_PIN_LOW(); } //If boost duty is 0, shut everything down
@@ -161,7 +161,7 @@ void boostControl()
     }
     else if (configPage4.boostType == CLOSED_LOOP_BOOST)
     {
-      if( (boostCounter & 7) == 1) { currentStatus.boostTarget = get3DTableValue(&boostTable, currentStatus.TPS, currentStatus.RPM) * 2; } //Boost target table is in kpa and divided by 2
+      if( (boostCounter & 7) == 1) { currentStatus.boostTarget = get3DTableValue(&boostTable, currentStatus.TPS/2, currentStatus.RPM) * 2; } //Boost target table is in kpa and divided by 2
       if(currentStatus.MAP >= 100 ) //Only engage boost control above 100kpa. 
       {
         //If flex fuel is enabled, there can be an adder to the boost target based on ethanol content
@@ -242,7 +242,7 @@ void vvtControl()
     else if( (configPage6.vvtMode == VVT_MODE_CLOSED_LOOP) )
     {
       //Lookup VVT duty based on either MAP or TPS
-      if(configPage6.vvtLoadSource == VVT_LOAD_TPS) { currentStatus.vvt1TargetAngle = get3DTableValue(&vvtTable, currentStatus.TPS, currentStatus.RPM); }
+      if(configPage6.vvtLoadSource == VVT_LOAD_TPS) { currentStatus.vvt1TargetAngle = get3DTableValue(&vvtTable, currentStatus.TPS/2, currentStatus.RPM); }
       else { currentStatus.vvt1TargetAngle = get3DTableValue(&vvtTable, currentStatus.MAP, currentStatus.RPM); }
 
       if( (vvtCounter & 31) == 1) { vvtPID.SetTunings(configPage10.vvtCLKP, configPage10.vvtCLKI, configPage10.vvtCLKD); } //This only needs to be run very infrequently, once every 32 calls to vvtControl(). This is approx. once per second
