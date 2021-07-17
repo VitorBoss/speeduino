@@ -1180,9 +1180,11 @@ struct config9 {
   byte unused10_186;
   byte unused10_187;
   byte unused10_188;
-  byte unused10_189;
-  byte unused10_190;
-  byte unused10_191;
+  byte crankIgnOutRpt : 1;  ///< Add another ignition pulse
+  byte priminScaleEnbl : 1; ///< Enable scale priming pulse
+  byte unused10_189 : 5;
+  byte primingScaleValue;
+  byte ignRptScale;
   
 #if defined(CORE_AVR)
   };
