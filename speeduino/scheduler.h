@@ -151,6 +151,7 @@ struct Schedule {
   unsigned int nextEndCompare;
   volatile bool hasNextSchedule = false;
   volatile bool endScheduleSetByDecoder = false;
+  volatile bool outputHadRepeated = false;
 };
 
 //Fuel schedules don't use the callback pointers, or the startTime/endScheduleSetByDecoder variables. They are removed in this struct to save RAM
