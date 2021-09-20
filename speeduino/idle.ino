@@ -445,24 +445,24 @@ void idleControl()
   }
   else { currentStatus.idleUpActive = false; }
 
-  if( ((configPage6.iacAlgorithm == IAC_ALGORITHM_PWM_CL) || (configPage6.iacAlgorithm == IAC_ALGORITHM_PWM_OLCL)
-  || (configPage6.iacAlgorithm == IAC_ALGORITHM_STEP_CL) || (configPage6.iacAlgorithm == IAC_ALGORITHM_STEP_OLCL))
-  && BIT_CHECK(LOOP_TIMER, BIT_TIMER_10HZ))
-  {
-    //Update closed loop idle target 10x/second
-    currentStatus.CLIdleTarget = (byte)table2D_getValue(&iacClosedLoopTable, currentStatus.coolant + CALIBRATION_TEMPERATURE_OFFSET); //All temps are offset by 40 degrees
-    idle_cl_target_rpm = (uint16_t)currentStatus.CLIdleTarget * 10; //All temps are offset by 40 degrees
-    if( targetTaper != 0 )
-    {
-      idle_cl_target_rpm = map(targetTaper, configPage2.idleTaperTime, 0, ((idle_cl_target_rpm*142)/128), idle_cl_target_rpm); //Add 11% to target RPM
-      targetTaper--;
-      currentStatus.CLIdleTarget = idle_cl_target_rpm / 10; //Keep track of current scaled target value
-    }
-  }
-
   bool PID_computed = false;
   if (BIT_CHECK(currentStatus.status1, BIT_STATUS1_DFCO) == 0)
   {
+    if( ((configPage6.iacAlgorithm == IAC_ALGORITHM_PWM_CL) || (configPage6.iacAlgorithm == IAC_ALGORITHM_PWM_OLCL)
+    || (configPage6.iacAlgorithm == IAC_ALGORITHM_STEP_CL) || (configPage6.iacAlgorithm == IAC_ALGORITHM_STEP_OLCL))
+    && BIT_CHECK(LOOP_TIMER, BIT_TIMER_10HZ) && !lastDFCOValue)
+    {
+      //Update closed loop idle target 10x/second
+      currentStatus.CLIdleTarget = (byte)table2D_getValue(&iacClosedLoopTable, currentStatus.coolant + CALIBRATION_TEMPERATURE_OFFSET); //All temps are offset by 40 degrees
+      idle_cl_target_rpm = (uint16_t)currentStatus.CLIdleTarget * 10; //All temps are offset by 40 degrees
+      if( targetTaper != 0 )
+      {
+        idle_cl_target_rpm = map(targetTaper, configPage2.idleTaperTime, 0, ((idle_cl_target_rpm*142)/128), idle_cl_target_rpm); //Add 11% to target RPM
+        targetTaper--;
+        currentStatus.CLIdleTarget = idle_cl_target_rpm / 10; //Keep track of current scaled target value
+      }
+    }
+
     switch(configPage6.iacAlgorithm)
     {
       case IAC_ALGORITHM_NONE:       //Case 0 is no idle control ('None')

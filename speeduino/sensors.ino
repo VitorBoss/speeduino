@@ -564,6 +564,7 @@ void readBat()
     //Redo the stepper homing
     if( (configPage6.iacAlgorithm == IAC_ALGORITHM_STEP_CL) || (configPage6.iacAlgorithm == IAC_ALGORITHM_STEP_OL) || (configPage6.iacAlgorithm == IAC_ALGORITHM_STEP_OLCL))
     {
+      completedHomeSteps = 0;
       initialiseIdle();
     }
   }
