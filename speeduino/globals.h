@@ -1164,7 +1164,7 @@ struct config9 {
   byte unused10_185;
   byte unused10_186;
   byte unused10_187;
-  byte unused10_188 : 6;
+  byte unused10_188 : 7;
   byte dfcoTaperEnable : 1;
   byte dfcoTaperTime;
   byte dfcoTaperFuel;
