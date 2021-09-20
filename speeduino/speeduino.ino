@@ -273,6 +273,8 @@ void loop()
       BIT_CLEAR(TIMER_mask, BIT_TIMER_10HZ);
       //updateFullStatus();
       checkProgrammableIO();
+      //Perform any idle related actions.
+      idleControl(); //Call 10x/second for taper reasons
     }
     if(BIT_CHECK(LOOP_TIMER, BIT_TIMER_30HZ)) //30 hertz
     {
@@ -302,7 +304,6 @@ void loop()
       readO2_2();
       readBat();
       nitrousControl();
-      idleControl(); //Perform any idle related actions. Even at higher frequencies, running 4x per second is sufficient.
       
       currentStatus.vss = getSpeed();
       currentStatus.gear = getGear();

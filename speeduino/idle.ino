@@ -114,8 +114,8 @@ void initialiseIdle()
       idlePID.SetOutputLimits(percentage(configPage2.iacCLminDuty, idle_pwm_max_count<<2), percentage(configPage2.iacCLmaxDuty, idle_pwm_max_count<<2));
       idlePID.SetTunings(configPage6.idleKP, configPage6.idleKI, configPage6.idleKD);
       idlePID.SetMode(AUTOMATIC); //Turn PID on
-
-      idleCounter = 0;
+      idle_pid_target_value = 0;
+      idlePID.Initialize();
 
       break;
 
@@ -140,11 +140,13 @@ void initialiseIdle()
       #elif defined(CORE_TEENSY41)
         idle_pwm_max_count = 1000000L / (2 * configPage6.idleFreq * 2); //Converts the frequency in Hz to the number of ticks (at 2uS) it takes to complete 1 cycle. Note that the frequency is divided by 2 coming from TS to allow for up to 512hz
       #endif
+      idlePID.SetSampleTime(250); //4Hz means 250ms
       idlePID.SetOutputLimits(percentage(configPage2.iacCLminDuty, idle_pwm_max_count<<2), percentage(configPage2.iacCLmaxDuty, idle_pwm_max_count<<2));
       idlePID.SetTunings(configPage6.idleKP, configPage6.idleKI, configPage6.idleKD);
       idlePID.SetMode(AUTOMATIC); //Turn PID on
+      idle_pid_target_value = table2D_getValue(&iacCrankDutyTable, currentStatus.coolant + CALIBRATION_TEMPERATURE_OFFSET);
+      idlePID.Initialize();
 
-      idleCounter = 0;
       break;
 
     case IAC_ALGORITHM_STEP_OL:
@@ -163,9 +165,14 @@ void initialiseIdle()
       iacStepTime_uS = configPage6.iacStepTime * 1000 + 1000;
       iacCoolTime_uS = configPage9.iacCoolTime * 1000;
 
-      completedHomeSteps = 0;
-      idleStepper.curIdleStep = 0;
-      idleStepper.stepperStatus = SOFF;
+      if( completedHomeSteps < (configPage6.iacStepHome * 3) )
+      {
+        //Change between modes running make engine stall
+        completedHomeSteps = 0;
+        idleStepper.curIdleStep = 0;
+        idleStepper.stepperStatus = SOFF;
+      }
+
       if (! configPage9.iacStepperInv)
       {
         idleStepper.lessAirDirection = STEPPER_BACKWARD;
@@ -195,10 +202,13 @@ void initialiseIdle()
       iacStepTime_uS = configPage6.iacStepTime * 1000 + 1000;
       iacCoolTime_uS = configPage9.iacCoolTime * 1000;
 
-      completedHomeSteps = 0;
-      idleCounter = 0;
-      idleStepper.curIdleStep = 0;
-      idleStepper.stepperStatus = SOFF;
+      if( completedHomeSteps < (configPage6.iacStepHome * 3) )
+      {
+        //Change between modes running make engine stall
+        completedHomeSteps = 0;
+        idleStepper.curIdleStep = 0;
+        idleStepper.stepperStatus = SOFF;
+      }
 
       if (! configPage9.iacStepperInv)
       {
@@ -216,6 +226,8 @@ void initialiseIdle()
       idlePID.SetTunings(configPage6.idleKP, configPage6.idleKI, configPage6.idleKD);
       idlePID.SetMode(AUTOMATIC); //Turn PID on
       configPage6.iacPWMrun = false; // just in case. This needs to be false with stepper idle
+      idle_pid_target_value = table2D_getValue(&iacClosedLoopTable, (currentStatus.coolant + CALIBRATION_TEMPERATURE_OFFSET)) * 3;
+      idlePID.Initialize();
       break;
 
     case IAC_ALGORITHM_STEP_OLCL:
@@ -240,10 +252,13 @@ void initialiseIdle()
       iacStepTime_uS = configPage6.iacStepTime * 1000 + 1000;
       iacCoolTime_uS = configPage9.iacCoolTime * 1000;
 
-      completedHomeSteps = 0;
-      idleCounter = 0;
-      idleStepper.curIdleStep = 0;
-      idleStepper.stepperStatus = SOFF;
+      if( completedHomeSteps < (configPage6.iacStepHome * 3) )
+      {
+        //Change between modes running make engine stall
+        completedHomeSteps = 0;
+        idleStepper.curIdleStep = 0;
+        idleStepper.stepperStatus = SOFF;
+      }
 
       if (! configPage9.iacStepperInv)
       {
@@ -261,12 +276,15 @@ void initialiseIdle()
       idlePID.SetTunings(configPage6.idleKP, configPage6.idleKI, configPage6.idleKD);
       idlePID.SetMode(AUTOMATIC); //Turn PID on
       configPage6.iacPWMrun = false; // just in case. This needs to be false with stepper idle
+      idle_pid_target_value = 0;
+      idlePID.Initialize();
       break;
 
     default:
       //Well this just shouldn't happen
       break;
   }
+  targetTaper = configPage2.idleTaperTime;
 
   initialiseIdleUpOutput();
 
@@ -399,6 +417,9 @@ static inline byte isStepperHomed()
 
 void idleControl()
 {
+  //DFCO conditions are met but ain't active
+  bool onGoingDFCO = ((currentStatus.TPS < configPage4.dfcoTPSThresh) && (currentStatus.RPM > (unsigned int)( (configPage4.dfcoRPM * 10) + configPage4.dfcoHyster)) && (currentStatus.coolant >= (int)(configPage2.dfcoMinCLT - CALIBRATION_TEMPERATURE_OFFSET)));
+
   if( idleInitComplete != configPage6.iacAlgorithm) { initialiseIdle(); }
   if( (currentStatus.RPM > 0) || (configPage6.iacPWMrun == true) ) { enableIdle(); }
 
@@ -424,11 +445,24 @@ void idleControl()
   }
   else { currentStatus.idleUpActive = false; }
 
+  if( ((configPage6.iacAlgorithm == IAC_ALGORITHM_PWM_CL) || (configPage6.iacAlgorithm == IAC_ALGORITHM_PWM_OLCL)
+  || (configPage6.iacAlgorithm == IAC_ALGORITHM_STEP_CL) || (configPage6.iacAlgorithm == IAC_ALGORITHM_STEP_OLCL))
+  && BIT_CHECK(LOOP_TIMER, BIT_TIMER_10HZ))
+  {
+    //Update closed loop idle target 10x/second
+    currentStatus.CLIdleTarget = (byte)table2D_getValue(&iacClosedLoopTable, currentStatus.coolant + CALIBRATION_TEMPERATURE_OFFSET); //All temps are offset by 40 degrees
+    idle_cl_target_rpm = (uint16_t)currentStatus.CLIdleTarget * 10; //All temps are offset by 40 degrees
+    if( targetTaper != 0 )
+    {
+      idle_cl_target_rpm = map(targetTaper, configPage2.idleTaperTime, 0, ((idle_cl_target_rpm*142)/128), idle_cl_target_rpm); //Add 11% to target RPM
+      targetTaper--;
+      currentStatus.CLIdleTarget = idle_cl_target_rpm / 10; //Keep track of current scaled target value
+    }
+  }
+
   bool PID_computed = false;
   if (BIT_CHECK(currentStatus.status1, BIT_STATUS1_DFCO) == 0)
   {
-    //DFCO conditions are met but ain't active
-    bool onGoingDFCO = ((currentStatus.coolant >= (int)(configPage2.dfcoMinCLT - CALIBRATION_TEMPERATURE_OFFSET)) && (currentStatus.RPM > (unsigned int)( (configPage4.dfcoRPM * 10) + configPage4.dfcoHyster)) && (currentStatus.TPS < configPage4.dfcoTPSThresh));
     switch(configPage6.iacAlgorithm)
     {
       case IAC_ALGORITHM_NONE:       //Case 0 is no idle control ('None')
@@ -466,7 +500,6 @@ void idleControl()
         }
         else
         {
-          
           if ( runSecsX10 < configPage2.idleTaperTime )
           {
             //Tapering between cranking IAC value and running
@@ -498,7 +531,7 @@ void idleControl()
 
       case IAC_ALGORITHM_PWM_CL:    //Case 3 is PWM closed loop
           //No cranking specific value for closed loop (yet?)
-        if( !BIT_CHECK(currentStatus.engine, BIT_ENGINE_RUN) ) //If ain't runnung it means off or cranking
+        if( BIT_CHECK(currentStatus.engine, BIT_ENGINE_CRANK) )
         {
           //Currently cranking. Use the cranking table
           currentStatus.idleDuty = table2D_getValue(&iacCrankDutyTable, currentStatus.coolant + CALIBRATION_TEMPERATURE_OFFSET); //All temps are offset by 40 degrees
@@ -519,9 +552,6 @@ void idleControl()
         }
         else
         {
-          currentStatus.CLIdleTarget = (byte)table2D_getValue(&iacClosedLoopTable, currentStatus.coolant + CALIBRATION_TEMPERATURE_OFFSET); //All temps are offset by 40 degrees
-          idle_cl_target_rpm = (uint16_t)currentStatus.CLIdleTarget * 10; //Multiply the byte target value back out by 10
-
           PID_computed = idlePID.Compute(true);
           if(PID_computed == true)
           {
@@ -537,7 +567,6 @@ void idleControl()
             if(currentStatus.idleUpActive == true) { currentStatus.idleDuty += configPage2.idleUpAdder; } //Add Idle Up amount if active
 
           }
-          idleCounter++;
         }
         if (BIT_CHECK(LOOP_TIMER, BIT_TIMER_1HZ)) //Use timer flag instead idle count
         {
@@ -549,7 +578,7 @@ void idleControl()
 
       case IAC_ALGORITHM_PWM_OLCL: //case 6 is PWM Open Loop table as feedforward term plus closed loop. 
         //No cranking specific value for closed loop (yet?)
-        if( !BIT_CHECK(currentStatus.engine, BIT_ENGINE_RUN) ) //If ain't runnung it means off or cranking
+        if( !BIT_CHECK(currentStatus.engine, BIT_ENGINE_RUN) ) //If ain't running it means off or cranking
         {
           //Currently cranking. Use the cranking table
           currentStatus.idleDuty = table2D_getValue(&iacCrankDutyTable, currentStatus.coolant + CALIBRATION_TEMPERATURE_OFFSET); //All temps are offset by 40 degrees
@@ -563,11 +592,10 @@ void idleControl()
           //Read the OL table as feedforward term
           FeedForwardTerm = percentage(table2D_getValue(&iacPWMTable, currentStatus.coolant + CALIBRATION_TEMPERATURE_OFFSET), idle_pwm_max_count<<2); //All temps are offset by 40 degrees
       
-          currentStatus.CLIdleTarget = (byte)table2D_getValue(&iacClosedLoopTable, currentStatus.coolant + CALIBRATION_TEMPERATURE_OFFSET); //All temps are offset by 40 degrees
-          idle_cl_target_rpm = (uint16_t)currentStatus.CLIdleTarget * 10; //Multiply the byte target value back out by 10
-
-          if((currentStatus.RPM - idle_cl_target_rpm > configPage2.iacRPMlimitHysteresis*10) || (currentStatus.TPS > configPage2.iacTPSlimit)){ //reset integeral to zero when TPS is bigger than set value in TS (opening throttle so not idle anymore). OR when RPM higher than Idle Target + RPM Histeresis (comming back from high rpm with throttle closed) 
+          if((currentStatus.RPM - idle_cl_target_rpm > configPage2.iacRPMlimitHysteresis*10) || (currentStatus.TPS > configPage2.iacTPSlimit) || lastDFCOValue || onGoingDFCO) //reset integeral to zero when TPS is bigger than set value in TS (opening throttle so not idle anymore). OR when RPM higher than Idle Target + RPM Histeresis (comming back from high rpm with throttle closed) 
+          {
             idlePID.ResetIntegeral();
+            targetTaper = configPage2.idleTaperTime;
           }
           PID_computed = idlePID.Compute(true, FeedForwardTerm);
 
@@ -585,9 +613,8 @@ void idleControl()
             if(currentStatus.idleUpActive == true) { currentStatus.idleDuty += configPage2.idleUpAdder; } //Add Idle Up amount if active
 
           }
-          idleCounter++;
         }
-        if (BIT_CHECK(LOOP_TIMER, BIT_TIMER_1HZ)) //Use timer flag instead idle count
+        if ( BIT_CHECK(LOOP_TIMER, BIT_TIMER_1HZ) ) //Use timer flag instead idle count
         {
           //This only needs to be run very infrequently, once per second
           idlePID.SetTunings(configPage6.idleKP, configPage6.idleKI, configPage6.idleKD);
@@ -600,7 +627,7 @@ void idleControl()
         if( (checkForStepping() == false) && (isStepperHomed() == true) ) //Check that homing is complete and that there's not currently a step already taking place. MUST BE IN THIS ORDER!
         {
           //Check for cranking pulsewidth
-          if( !BIT_CHECK(currentStatus.engine, BIT_ENGINE_RUN) ) //If ain't runnung it means off or cranking
+          if( !BIT_CHECK(currentStatus.engine, BIT_ENGINE_RUN) ) //If ain't running it means off or cranking
           {
             //Currently cranking. Use the cranking table
             idleStepper.targetIdleStep = table2D_getValue(&iacCrankStepsTable, (currentStatus.coolant + CALIBRATION_TEMPERATURE_OFFSET)) * 3; //All temps are offset by 40 degrees. Step counts are divided by 3 in TS. Multiply back out here
@@ -622,8 +649,6 @@ void idleControl()
                 //Standard running
                 idleStepper.targetIdleStep = table2D_getValue(&iacStepTable, (currentStatus.coolant + CALIBRATION_TEMPERATURE_OFFSET)) * 3; //All temps are offset by 40 degrees. Step counts are divided by 3 in TS. Multiply back out here
               }
-              iacStepTime_uS = configPage6.iacStepTime * 1000 + 1000;
-              iacCoolTime_uS = configPage9.iacCoolTime * 1000;
             }
           }
           if(currentStatus.idleUpActive == true) { idleStepper.targetIdleStep += configPage2.idleUpAdder; } //Add Idle Up amount if active
@@ -637,6 +662,12 @@ void idleControl()
           if( ((uint16_t)configPage9.iacMaxSteps * 3) > 255 ) { currentStatus.idleLoad = idleStepper.curIdleStep / 2; }//Current step count (Divided by 2 for byte)
           else { currentStatus.idleLoad = idleStepper.curIdleStep; }
         }
+        if ( BIT_CHECK(LOOP_TIMER, BIT_TIMER_1HZ) )
+        {
+          //This only needs to be run very infrequently, once per second
+          iacStepTime_uS = configPage6.iacStepTime * 1000 + 1000;
+          iacCoolTime_uS = configPage9.iacCoolTime * 1000;
+        }
         //Set or clear the idle active flag
         if(idleStepper.targetIdleStep != idleStepper.curIdleStep) { BIT_SET(currentStatus.spark, BIT_SPARK_IDLE); }
         else { BIT_CLEAR(currentStatus.spark, BIT_SPARK_IDLE); }
@@ -647,19 +678,16 @@ void idleControl()
         //First thing to check is whether there is currently a step going on and if so, whether it needs to be turned off
         if( (checkForStepping() == false) && (isStepperHomed() == true) ) //Check that homing is complete and that there's not currently a step already taking place. MUST BE IN THIS ORDER!
         {
-          if( !BIT_CHECK(currentStatus.engine, BIT_ENGINE_RUN) ) //If ain't runnung it means off or cranking
+          if( !BIT_CHECK(currentStatus.engine, BIT_ENGINE_RUN) ) //If ain't running it means off or cranking
           {
             //Currently cranking. Use the cranking table
             idleStepper.targetIdleStep = table2D_getValue(&iacCrankStepsTable, (currentStatus.coolant + CALIBRATION_TEMPERATURE_OFFSET)) * 3; //All temps are offset by 40 degrees. Step counts are divided by 3 in TS. Multiply back out here
 
             idle_pid_target_value = idleStepper.targetIdleStep << 2; //Resolution increased
             FeedForwardTerm = idle_pid_target_value;
-            idlePID.Initialize(); //Update output to smooth transition
           }
           else 
           {
-            currentStatus.CLIdleTarget = (byte)table2D_getValue(&iacClosedLoopTable, currentStatus.coolant + CALIBRATION_TEMPERATURE_OFFSET); //All temps are offset by 40 degrees
-            idle_cl_target_rpm = (uint16_t)currentStatus.CLIdleTarget * 10; //All temps are offset by 40 degrees
             if( BIT_CHECK(LOOP_TIMER, BIT_TIMER_10HZ) )
             {
               if( runSecsX10 < configPage2.idleTaperTime )
@@ -678,7 +706,11 @@ void idleControl()
                 //Standard running
                 FeedForwardTerm = (table2D_getValue(&iacStepTable, (currentStatus.coolant + CALIBRATION_TEMPERATURE_OFFSET)) * 3)<<2; //All temps are offset by 40 degrees. Step counts are divided by 3 in TS. Multiply back out here
                 //reset integeral to zero when TPS is bigger than set value in TS (opening throttle so not idle anymore). OR when RPM higher than Idle Target + RPM Histeresis (comming back from high rpm with throttle closed) 
-                if ((((int16_t)currentStatus.RPMdiv100 - currentStatus.CLIdleTarget) > configPage2.iacRPMlimitHysteresis) || (currentStatus.TPS > configPage2.iacTPSlimit) || onGoingDFCO) { idlePID.ResetIntegeral(); }
+                if (((currentStatus.RPM - idle_cl_target_rpm) > configPage2.iacRPMlimitHysteresis*10) || (currentStatus.TPS > configPage2.iacTPSlimit) || lastDFCOValue || onGoingDFCO)
+                {
+                  idlePID.ResetIntegeral();
+                  targetTaper = configPage2.idleTaperTime;
+                }
               }
               else { FeedForwardTerm = idle_pid_target_value; }
             }
@@ -686,10 +718,9 @@ void idleControl()
             PID_computed = idlePID.Compute(true, FeedForwardTerm>>2);
 
             //If DFCO conditions are met keep output from changing
-            if( (currentStatus.TPS > configPage2.iacTPSlimit) || onGoingDFCO || ((configPage6.iacAlgorithm == IAC_ALGORITHM_STEP_OLCL) && (runSecsX10 < configPage2.idleTaperTime)) ) { idleStepper.targetIdleStep = FeedForwardTerm>>2; }
-            else { idleStepper.targetIdleStep = idle_pid_target_value>>2; }//Increase resolution
+            if( (currentStatus.TPS > configPage2.iacTPSlimit) || lastDFCOValue || onGoingDFCO || ((configPage6.iacAlgorithm == IAC_ALGORITHM_STEP_OLCL) && (runSecsX10 < configPage2.idleTaperTime))) { idle_pid_target_value = FeedForwardTerm; }
+            idleStepper.targetIdleStep = idle_pid_target_value>>2; //Increase resolution
 
-            idleCounter++;
           }
           if(currentStatus.idleUpActive == true) { idleStepper.targetIdleStep += configPage2.idleUpAdder; } //Add Idle Up amount if active
           //limit to the configured max steps. This must include any idle up adder, to prevent over-opening.
@@ -719,6 +750,7 @@ void idleControl()
         break;
     }
   } //if DFCO active don't change idle valve position
+  lastDFCOValue = BIT_CHECK(currentStatus.status1, BIT_STATUS1_DFCO);
 }
 
 
