@@ -49,7 +49,7 @@ byte lastKnockCount;
 int16_t knockWindowMin; //The current minimum crank angle for a knock pulse to be valid
 int16_t knockWindowMax;//The current maximum crank angle for a knock pulse to be valid
 uint16_t aseTaperStart;
-uint16_t dfcoTaperStart;
+uint16_t dfcoTaperTime;
 uint16_t dfcoStart;
 uint16_t idleAdvStart;
 
@@ -137,16 +137,15 @@ uint16_t correctionsFuel()
   { 
     if (configPage9.dfcoTaperEnable == 1)
     {
-      if ( dfcoTaperStart == 0 ) { dfcoTaperStart = runSecsX10; }
-      if ((runSecsX10 - dfcoTaperStart) <= configPage9.dfcoTaperTime)
+      if ( dfcoTaperTime != 0)
       { 
-        sumCorrections = map((runSecsX10 - dfcoTaperStart), 0, configPage9.dfcoTaperTime
-        , sumCorrections, (sumCorrections * configPage9.dfcoTaperFuel) / 100);
+        sumCorrections = map(dfcoTaperTime, configPage9.dfcoTaperTime, 0, sumCorrections, (sumCorrections * configPage9.dfcoTaperFuel) / 100);
+        if( BIT_CHECK(LOOP_TIMER, BIT_TIMER_10HZ) ) { dfcoTaperTime--; }
       }
     }
     else { sumCorrections = 0; }
   }
-  else { dfcoTaperStart = 0; }
+  else { dfcoTaperTime = configPage9.dfcoTaperTime; }
 
   sumCorrections = sumCorrections / powint(100,activeCorrections);
 
@@ -703,10 +702,9 @@ int8_t correctionsIgn(int8_t base_advance)
   { 
     if (configPage9.dfcoTaperEnable == 1)
     {
-      if ( dfcoTaperStart == 0 ) { dfcoTaperStart = runSecsX10; }
-      if ((runSecsX10 - dfcoTaperStart) <= configPage9.dfcoTaperTime)
+      if ( dfcoTaperTime != 0 )
       {
-        advance -= map((runSecsX10 - dfcoTaperStart), 0, configPage9.dfcoTaperTime, 0, configPage9.dfcoTaperAdvance);
+        advance -= map(dfcoTaperTime, configPage9.dfcoTaperTime, 0, 0, configPage9.dfcoTaperAdvance);
       }
     }
   }
