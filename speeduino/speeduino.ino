@@ -75,6 +75,7 @@ uint16_t inj_opentime_uS = 0;
 bool ignitionOn = false; /**< The current state of the ignition system (on or off) */
 bool fuelOn = false; /**< The current state of the fuel system (on or off) */
 
+byte fpCounter = 15; /**< Fuel pump delay to disable  */
 byte curRollingCut = 0; /**< Rolling rev limiter, current ignition channel being cut */
 byte rollingCutCounter = 0; /**< how many times (revolutions) the ignition has been cut in a row */
 uint32_t rollingCutLastRev = 0; /**< Tracks whether we're on the same or a different rev for the rolling cut */
@@ -172,6 +173,7 @@ void loop()
       currentStatus.RPMdiv100 = currentStatus.RPM / 100;
       FUEL_PUMP_ON();
       currentStatus.fuelPumpOn = true; //Not sure if this is needed.
+      fpCounter = 15;
     }
     else
     {
@@ -195,8 +197,19 @@ void loop()
       AFRnextCycle = 0;
       ignitionCount = 0;
       ignitionOn = false;
-      fuelOn = false;
-      if (fpPrimed == true) { FUEL_PUMP_OFF(); currentStatus.fuelPumpOn = false; } //Turn off the fuel pump, but only if the priming is complete
+      if (fpPrimed == true)
+      {
+        if(BIT_CHECK(LOOP_TIMER, BIT_TIMER_10HZ)) //10 hertz
+        {
+          if(fpCounter != 0) { fpCounter--; }
+          else
+          {
+            fuelOn = false;
+            FUEL_PUMP_OFF(); //Turn off the fuel pump, but only if the priming is complete
+            currentStatus.fuelPumpOn = false;
+          }
+        }
+      }
       if (configPage6.iacPWMrun == false) { disableIdle(); } //Turn off the idle PWM
       BIT_CLEAR(currentStatus.engine, BIT_ENGINE_CRANK); //Clear cranking bit (Can otherwise get stuck 'on' even with 0 rpm)
       BIT_CLEAR(currentStatus.engine, BIT_ENGINE_WARMUP); //Same as above except for WUE
