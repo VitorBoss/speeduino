@@ -239,6 +239,7 @@ extern unsigned long elapsedTime;
 extern unsigned long lastCrankAngleCalc;
 extern int16_t lastToothCalcAdvance; //Invalid value here forces calculation of this on first main loop
 extern unsigned long lastVVTtime; //The time between the vvt reference pulse and the last crank pulse
+extern uint8_t tdcTooth; //Tooth on TDC for better RPM readings
 
 extern uint16_t ignition1EndTooth;
 extern uint16_t ignition2EndTooth;

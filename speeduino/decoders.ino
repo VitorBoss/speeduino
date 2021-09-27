@@ -91,6 +91,7 @@ unsigned long elapsedTime;
 unsigned long lastCrankAngleCalc;
 int16_t lastToothCalcAdvance = 99; //Invalid value here forces calculation of this on first main loop
 unsigned long lastVVTtime; //The time between the vvt reference pulse and the last crank pulse
+uint8_t tdcTooth = 1;
 
 uint16_t ignition1EndTooth = 0;
 uint16_t ignition2EndTooth = 0;
@@ -375,6 +376,7 @@ void triggerSetup_missingTooth()
   {
     triggerSecFilterTime = (1000000 / (MAX_RPM / 60));
   }
+  tdcTooth = (configPage4.triggerAngle / (int16_t)triggerToothAngle) - 1;
   secondDerivEnabled = false;
   decoderIsSequential = false;
   checkSyncToothCount = (configPage4.triggerTeeth) >> 1; //50% of the total teeth.
@@ -392,8 +394,14 @@ void triggerPri_missingTooth()
    curGap = curTime - toothLastToothTime;
    if ( curGap >= triggerFilterTime ) //Pulses should never be less than triggerFilterTime, so if they are it means a false trigger. (A 36-1 wheel at 8000pm will have triggers approx. every 200uS)
    {
-     toothCurrentCount++; //Increment the tooth counter
-     validTrigger = true; //Flag this pulse as being a valid trigger (ie that it passed filters)
+      toothCurrentCount++; //Increment the tooth counter
+      validTrigger = true; //Flag this pulse as being a valid trigger (ie that it passed filters)
+
+      if( toothCurrentCount == tdcTooth)
+      {
+          toothOneMinusOneTime = toothOneTime;
+          toothOneTime = curTime;
+      }
 
      //if(toothCurrentCount > checkSyncToothCount || currentStatus.hasSync == false)
       if( (toothLastToothTime > 0) && (toothLastMinusOneToothTime > 0) )
@@ -445,8 +453,6 @@ void triggerPri_missingTooth()
                   else { revolutionOne = 0; }
                 }
                 else {revolutionOne = !revolutionOne;} //Flip sequential revolution tracker if poll level is not used
-                toothOneMinusOneTime = toothOneTime;
-                toothOneTime = curTime;
 
                 //if Sequential fuel or ignition is in use, further checks are needed before determining sync
                 if( (configPage4.sparkMode == IGN_MODE_SEQUENTIAL) || (configPage2.injLayout == INJ_SEQUENTIAL) )
@@ -572,7 +578,7 @@ uint16_t getRPM_missingTooth()
   uint16_t tempRPM = 0;
   if( currentStatus.RPM < currentStatus.crankRPM )
   {
-    if(toothCurrentCount != 1)
+    if(toothCurrentCount == tdcTooth) //More realiable readings on TDC as speed decreases
     {
       if(configPage4.TrigSpeed == CAM_SPEED) { tempRPM = crankingGetRPM(configPage4.triggerTeeth, 720); } //Account for cam speed
       else { tempRPM = crankingGetRPM(configPage4.triggerTeeth, 360); }
@@ -703,6 +709,7 @@ void triggerSetup_DualWheel()
   toothCurrentCount = 255; //Default value
   triggerFilterTime = (1000000 / (MAX_RPM / 60 * configPage4.triggerTeeth)); //Trigger filter time is the shortest possible time (in uS) that there can be between crank teeth (ie at max RPM). Any pulses that occur faster than this time will be disgarded as noise
   triggerSecFilterTime = (1000000 / (MAX_RPM / 60 * 2)) / 2; //Same as above, but fixed at 2 teeth on the secondary input and divided by 2 (for cam speed)
+  tdcTooth = (configPage4.triggerAngle / (int16_t)configPage4.triggerTeeth) - 1;
   secondDerivEnabled = false;
   decoderIsSequential = true;
   triggerToothAngleIsCorrect = true; //This is always true for this pattern
@@ -726,12 +733,16 @@ void triggerPri_DualWheel()
 
       if ( currentStatus.hasSync == true )
       {
+        if(toothCurrentCount == tdcTooth)
+        {
+          toothOneMinusOneTime = toothOneTime;
+          toothOneTime = curTime;
+        }
+
         if ( (toothCurrentCount == 1) || (toothCurrentCount > configPage4.triggerTeeth) )
         {
           toothCurrentCount = 1;
           revolutionOne = !revolutionOne; //Flip sequential revolution tracker
-          toothOneMinusOneTime = toothOneTime;
-          toothOneTime = curTime;
           currentStatus.startRevolutions++; //Counter
         }
 

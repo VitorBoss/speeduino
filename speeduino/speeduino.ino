@@ -401,7 +401,8 @@ void loop()
 
     } //1Hz timer
 
-    if( (configPage6.iacAlgorithm == IAC_ALGORITHM_STEP_OL) || (configPage6.iacAlgorithm == IAC_ALGORITHM_STEP_CL) || (configPage6.iacAlgorithm == IAC_ALGORITHM_STEP_OLCL))  { idleControl(); } //Run idlecontrol every loop for stepper idle.
+    if( ((configPage6.iacAlgorithm == IAC_ALGORITHM_STEP_OL) || (configPage6.iacAlgorithm == IAC_ALGORITHM_STEP_CL)
+    || (configPage6.iacAlgorithm == IAC_ALGORITHM_STEP_OLCL)) && !BIT_CHECK(LOOP_TIMER, BIT_TIMER_10HZ))  { idleControl(); } //Run idlecontrol every loop for stepper idle.
 
     
     //VE and advance calculation were moved outside the sync/RPM check so that the fuel and ignition load value will be accurately shown when RPM=0
