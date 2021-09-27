@@ -137,7 +137,7 @@ uint16_t correctionsFuel()
   { 
     if (configPage9.dfcoTaperEnable == 1)
     {
-      if ( dfcoTaperTime != configPage9.dfcoTaperTime )
+      if ( dfcoTaperTime <= configPage9.dfcoTaperTime )
       { 
         sumCorrections = map(dfcoTaperTime, 0, configPage9.dfcoTaperTime, sumCorrections, (sumCorrections * configPage9.dfcoTaperFuel) / 100);
         if( BIT_CHECK(LOOP_TIMER, BIT_TIMER_10HZ) ) { dfcoTaperTime++; }
@@ -702,7 +702,7 @@ int8_t correctionsIgn(int8_t base_advance)
   { 
     if (configPage9.dfcoTaperEnable == 1)
     {
-      if ( dfcoTaperTime != configPage9.dfcoTaperTime )
+      if ( dfcoTaperTime <= configPage9.dfcoTaperTime )
       {
         advance -= map(dfcoTaperTime, 0, configPage9.dfcoTaperTime, 0, configPage9.dfcoTaperAdvance);
       }
