@@ -458,7 +458,8 @@ void idleControl()
       if( targetTaper != 0 )
       {
         idle_cl_target_rpm = map(targetTaper, configPage2.idleTaperTime, 0, ((idle_cl_target_rpm*142)/128), idle_cl_target_rpm); //Add 11% to target RPM
-        targetTaper--;
+        //Keep target higher if taper is still counting or RPM is higher than target to avoid PID sink
+        if( (runSecsX10 >= (uint32_t)configPage2.idleTaperTime) && (currentStatus.RPM <= idle_cl_target_rpm) ) { targetTaper--; }
         currentStatus.CLIdleTarget = idle_cl_target_rpm / 10; //Keep track of current scaled target value
       }
     }
@@ -595,7 +596,7 @@ void idleControl()
           if((currentStatus.RPM - idle_cl_target_rpm > configPage2.iacRPMlimitHysteresis*10) || (currentStatus.TPS > configPage2.iacTPSlimit) || lastDFCOValue || onGoingDFCO) //reset integeral to zero when TPS is bigger than set value in TS (opening throttle so not idle anymore). OR when RPM higher than Idle Target + RPM Histeresis (comming back from high rpm with throttle closed) 
           {
             idlePID.ResetIntegeral();
-            targetTaper = configPage2.idleTaperTime;
+            if( currentStatus.TPS > configPage2.iacTPSlimit ) { targetTaper = configPage2.idleTaperTime; }
           }
           PID_computed = idlePID.Compute(true, FeedForwardTerm);
 
@@ -709,7 +710,7 @@ void idleControl()
                 if (((currentStatus.RPM - idle_cl_target_rpm) > configPage2.iacRPMlimitHysteresis*10) || (currentStatus.TPS > configPage2.iacTPSlimit) || lastDFCOValue || onGoingDFCO)
                 {
                   idlePID.ResetIntegeral();
-                  targetTaper = configPage2.idleTaperTime;
+                  if( currentStatus.TPS > configPage2.iacTPSlimit ) { targetTaper = configPage2.idleTaperTime; }
                 }
               }
               else { FeedForwardTerm = idle_pid_target_value; }

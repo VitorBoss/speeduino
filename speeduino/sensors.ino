@@ -559,6 +559,7 @@ void readBat()
     //Reprime the fuel pump
     fpPrimeTime = currentStatus.secl;
     fpPrimed = false;
+    injPrimed = false;
     FUEL_PUMP_ON();
 
     //Redo the stepper homing
