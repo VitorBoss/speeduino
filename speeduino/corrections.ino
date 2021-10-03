@@ -135,13 +135,10 @@ uint16_t correctionsFuel()
   bitWrite(currentStatus.status1, BIT_STATUS1_DFCO, correctionDFCO());
   if ( BIT_CHECK(currentStatus.status1, BIT_STATUS1_DFCO) == 1 )
   { 
-    if (configPage9.dfcoTaperEnable == 1)
+    if( (configPage9.dfcoTaperEnable == 1) && (dfcoTaperTime <= configPage9.dfcoTaperTime) )
     {
-      if ( dfcoTaperTime <= configPage9.dfcoTaperTime )
-      { 
-        sumCorrections = map(dfcoTaperTime, 0, configPage9.dfcoTaperTime, sumCorrections, (sumCorrections * configPage9.dfcoTaperFuel) / 100);
-        if( BIT_CHECK(LOOP_TIMER, BIT_TIMER_10HZ) ) { dfcoTaperTime++; }
-      }
+      sumCorrections = map(dfcoTaperTime, 0, configPage9.dfcoTaperTime, sumCorrections, (sumCorrections * configPage9.dfcoTaperFuel) / 100);
+      if( BIT_CHECK(LOOP_TIMER, BIT_TIMER_10HZ) ) { dfcoTaperTime++; }
     }
     else { sumCorrections = 0; }
   }
