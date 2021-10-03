@@ -170,7 +170,7 @@ void loop()
     {
       currentStatus.longRPM = getRPM(); //Long RPM is included here
       currentStatus.RPM = currentStatus.longRPM;
-      currentStatus.RPMdiv100 = currentStatus.RPM / 100;
+      currentStatus.RPMdiv100 = (currentStatus.RPM + 40) / 100;
       FUEL_PUMP_ON();
       currentStatus.fuelPumpOn = true; //Not sure if this is needed.
       fpCounter = 15;
