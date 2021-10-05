@@ -286,6 +286,8 @@ void loop()
       BIT_CLEAR(TIMER_mask, BIT_TIMER_10HZ);
       //updateFullStatus();
       checkProgrammableIO();
+      //Update idle closed loop and idle ignition target
+      updateIdleTarget();
       //Perform any idle related actions.
       idleControl(); //Call 10x/second for taper reasons
     }

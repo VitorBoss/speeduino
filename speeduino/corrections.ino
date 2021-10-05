@@ -787,14 +787,14 @@ int8_t correctionIdleAdvance(int8_t advance)
 
   int8_t ignIdleValue = advance;
   //Adjust the advance based on idle target rpm.
-  if( (configPage2.idleAdvEnabled >= 1) && (runSecsX10 >= (configPage2.IdleAdvDelay * 5)) && !BIT_CHECK(currentStatus.status1, BIT_STATUS1_DFCO))
+  if( (configPage2.idleAdvEnabled >= 1) && (runSecsX10 >= (configPage2.IdleAdvDelay * 5)) )
   {
     //currentStatus.CLIdleTarget is updated on idle.ino file
     int idleRPMdelta = (currentStatus.CLIdleTarget - (currentStatus.RPM / 10) ) + 50;
     // Limit idle rpm delta between -500rpm - 500rpm
     if(idleRPMdelta > 100) { idleRPMdelta = 100; }
     if(idleRPMdelta < 0) { idleRPMdelta = 0; }
-    if( (currentStatus.RPM < (configPage2.idleAdvRPM * 100)) && ((configPage2.vssMode == 0) || (currentStatus.vss < configPage2.idleAdvVss))
+    if( (currentStatus.RPM < ((uint16_t)configPage2.idleAdvRPM * 100)) && ((configPage2.vssMode == 0) || (currentStatus.vss < configPage2.idleAdvVss))
     && (((configPage2.idleAdvAlgorithm == 0) && (currentStatus.TPS < configPage2.idleAdvTPS)) || ((configPage2.idleAdvAlgorithm == 1) && (currentStatus.CTPSActive == 1))) ) // closed throttle position sensor (CTPS) based idle state
     {
       if( idleAdvTaper < configPage9.idleAdvStartDelay )

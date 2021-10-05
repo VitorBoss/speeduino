@@ -284,7 +284,7 @@ void initialiseIdle()
       //Well this just shouldn't happen
       break;
   }
-  targetTaper = configPage2.idleTaperTime;
+  targetTaper = 0;
 
   initialiseIdleUpOutput();
 
@@ -448,22 +448,6 @@ void idleControl()
   bool PID_computed = false;
   if (BIT_CHECK(currentStatus.status1, BIT_STATUS1_DFCO) == 0)
   {
-    if( ((configPage6.iacAlgorithm == IAC_ALGORITHM_PWM_CL) || (configPage6.iacAlgorithm == IAC_ALGORITHM_PWM_OLCL)
-    || (configPage6.iacAlgorithm == IAC_ALGORITHM_STEP_CL) || (configPage6.iacAlgorithm == IAC_ALGORITHM_STEP_OLCL))
-    && BIT_CHECK(LOOP_TIMER, BIT_TIMER_10HZ) && !lastDFCOValue)
-    {
-      //Update closed loop idle target 10x/second
-      currentStatus.CLIdleTarget = (byte)table2D_getValue(&iacClosedLoopTable, currentStatus.coolant + CALIBRATION_TEMPERATURE_OFFSET); //All temps are offset by 40 degrees
-      idle_cl_target_rpm = (uint16_t)currentStatus.CLIdleTarget * 10; //All temps are offset by 40 degrees
-      if( targetTaper != 0 )
-      {
-        idle_cl_target_rpm = map(targetTaper, configPage2.idleTaperTime, 0, ((idle_cl_target_rpm*142)/128), idle_cl_target_rpm); //Add 11% to target RPM
-        //Keep target higher if taper is still counting or RPM is higher than target to avoid PID sink
-        if( (runSecsX10 >= (uint32_t)configPage2.idleTaperTime) && (currentStatus.RPM <= idle_cl_target_rpm) ) { targetTaper--; }
-        currentStatus.CLIdleTarget = idle_cl_target_rpm / 10; //Keep track of current scaled target value
-      }
-    }
-
     switch(configPage6.iacAlgorithm)
     {
       case IAC_ALGORITHM_NONE:       //Case 0 is no idle control ('None')
@@ -596,10 +580,10 @@ void idleControl()
           //Read the OL table as feedforward term
           FeedForwardTerm = percentage(table2D_getValue(&iacPWMTable, currentStatus.coolant + CALIBRATION_TEMPERATURE_OFFSET), idle_pwm_max_count<<2); //All temps are offset by 40 degrees
       
-          if((currentStatus.RPM - idle_cl_target_rpm > configPage2.iacRPMlimitHysteresis*10) || (currentStatus.TPS > configPage2.iacTPSlimit) || lastDFCOValue || onGoingDFCO) //reset integeral to zero when TPS is bigger than set value in TS (opening throttle so not idle anymore). OR when RPM higher than Idle Target + RPM Histeresis (comming back from high rpm with throttle closed) 
+          if((currentStatus.RPM - idle_cl_target_rpm > configPage2.iacRPMlimitHysteresis*10) || (currentStatus.TPS > configPage2.iacTPSlimit) || lastDFCOValue || onGoingDFCO || BIT_CHECK(currentStatus.engine, BIT_ENGINE_ASE) ) //reset integeral to zero when TPS is bigger than set value in TS (opening throttle so not idle anymore). OR when RPM higher than Idle Target + RPM Histeresis (comming back from high rpm with throttle closed) 
           {
             idlePID.ResetIntegeral();
-            if( currentStatus.TPS > configPage2.iacTPSlimit ) { targetTaper = configPage2.idleTaperTime; }
+            if( currentStatus.TPS > configPage2.iacTPSlimit ) { targetTaper = 0; }
           }
           PID_computed = idlePID.Compute(true, FeedForwardTerm);
 
@@ -714,10 +698,10 @@ void idleControl()
                 //Standard running
                 FeedForwardTerm = (table2D_getValue(&iacStepTable, (currentStatus.coolant + CALIBRATION_TEMPERATURE_OFFSET)) * 3)<<2; //All temps are offset by 40 degrees. Step counts are divided by 3 in TS. Multiply back out here
                 //reset integeral to zero when TPS is bigger than set value in TS (opening throttle so not idle anymore). OR when RPM higher than Idle Target + RPM Histeresis (comming back from high rpm with throttle closed) 
-                if (((currentStatus.RPM - idle_cl_target_rpm) > configPage2.iacRPMlimitHysteresis*10) || (currentStatus.TPS > configPage2.iacTPSlimit) || lastDFCOValue || onGoingDFCO)
+                if (((currentStatus.RPM - idle_cl_target_rpm) > configPage2.iacRPMlimitHysteresis*10) || (currentStatus.TPS > configPage2.iacTPSlimit) || lastDFCOValue || onGoingDFCO || BIT_CHECK(currentStatus.engine, BIT_ENGINE_ASE) )
                 {
                   idlePID.ResetIntegeral();
-                  if( currentStatus.TPS > configPage2.iacTPSlimit ) { targetTaper = configPage2.idleTaperTime; }
+                  if( currentStatus.TPS > configPage2.iacTPSlimit ) { targetTaper = 0; }
                 }
               }
               else { FeedForwardTerm = idle_pid_target_value; }
@@ -726,7 +710,9 @@ void idleControl()
             PID_computed = idlePID.Compute(true, FeedForwardTerm>>2);
 
             //If DFCO conditions are met keep output from changing
-            if( (currentStatus.TPS > configPage2.iacTPSlimit) || lastDFCOValue || onGoingDFCO || ((configPage6.iacAlgorithm == IAC_ALGORITHM_STEP_OLCL) && (idleTaper < configPage2.idleTaperTime))) { idle_pid_target_value = FeedForwardTerm; }
+            if( (currentStatus.TPS > configPage2.iacTPSlimit) || lastDFCOValue || onGoingDFCO
+            || ((configPage6.iacAlgorithm == IAC_ALGORITHM_STEP_OLCL) && (idleTaper < configPage2.idleTaperTime))
+            || BIT_CHECK(currentStatus.engine, BIT_ENGINE_ASE) ) { idle_pid_target_value = FeedForwardTerm; }
             idleStepper.targetIdleStep = idle_pid_target_value>>2; //Increase resolution
 
           }
@@ -758,6 +744,7 @@ void idleControl()
         break;
     }
   } //if DFCO active don't change idle valve position
+  else { targetTaper = 0; }
   lastDFCOValue = BIT_CHECK(currentStatus.status1, BIT_STATUS1_DFCO);
 }
 
@@ -792,6 +779,25 @@ void disableIdle()
   }
   BIT_CLEAR(currentStatus.spark, BIT_SPARK_IDLE); //Turn the idle control flag off
   currentStatus.idleLoad = 0;
+}
+
+void updateIdleTarget()
+{
+  //Update closed loop idle target
+  currentStatus.CLIdleTarget = (byte)table2D_getValue(&iacClosedLoopTable, currentStatus.coolant + CALIBRATION_TEMPERATURE_OFFSET); //All temps are offset by 40 degrees
+  idle_cl_target_rpm = (uint16_t)currentStatus.CLIdleTarget * 10; //All temps are offset by 40 degrees
+  if( targetTaper < configPage2.idleTaperTime )
+  {
+    idle_cl_target_rpm = map(targetTaper, 0, configPage2.idleTaperTime, ((idle_cl_target_rpm * 143)>>7), idle_cl_target_rpm); //Add 11.7% to target RPM
+    //Keep target higher if taper is still counting or RPM is higher than target to avoid PID sink
+    if( !BIT_CHECK(currentStatus.status1, BIT_STATUS1_DFCO) //Keep high at DFCO
+    && (runSecsX10 >= (uint32_t)configPage2.idleTaperTime)  //Keep high if idle taper time still counting
+    && (currentStatus.RPM <= (idle_cl_target_rpm + 20)) ) //Keep if RPM is more than last targert + 20
+    {
+      targetTaper++;
+    }
+    currentStatus.CLIdleTarget = idle_cl_target_rpm / 10; //Keep track of current scaled target value
+  }
 }
 
 #if defined(CORE_AVR) //AVR chips use the ISR for this

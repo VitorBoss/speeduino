@@ -69,5 +69,6 @@ void initialiseIdle();
 void initialiseIdleUpOutput();
 void disableIdle();
 void idleInterrupt();
+void updateIdleTarget();
 
 #endif
