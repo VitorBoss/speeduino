@@ -688,3 +688,251 @@ void integerPID_ideal::SetControllerDirection(byte Direction)
  * purposes.  this are the functions the PID Front-end uses for example
  ******************************************************************************/
 int integerPID_ideal::GetDirection(){ return controllerDirection;}
+
+/* Status Funcions*************************************************************
+ * Just because you set the Kp=-1 doesn't mean it actually happened.  these
+ * functions query the internal state of the PID.  they're here for display
+ * purposes.  this are the functions the PID Front-end uses for example
+ ******************************************************************************/
+int integerPID_ideal::GetDirection(){ return controllerDirection;}
+/*Constructor (...)*********************************************************
+ *    The parameters specified here are those for for which we can't set up
+ *    reliable defaults, so we need to have the user set them.
+ ***************************************************************************/
+uPID::uPID(long* Input, long* Output, long* Setpoint,
+        long Kp, long Ki, long Kd, byte ControllerDirection)
+{
+   myOutput = Output;
+   myInput = Input;
+   mySetpoint = Setpoint;
+   inAuto = true;
+
+   uPID::SetOutputLimits(0, 255);	//default output limit corresponds to
+												//the arduino pwm limits
+
+   SampleTime = 100;						//default Controller Sample Time is 0.1 seconds
+
+   uPID::SetControllerDirection(ControllerDirection);
+   uPID::SetTunings(Kp, Ki, Kd);
+   uPID::Initialize();
+
+   lastTime = millis()-SampleTime;
+}
+
+/*Constructor (...)*********************************************************
+ *    The parameters specified here are those for for which we can't set up
+ *    reliable defaults, so we need to have the user set them.
+ ***************************************************************************/
+uPID::uPID(long* Input, long* Output, long* Setpoint,
+        byte Kp, byte Ki, byte Kd, byte ControllerDirection)
+{
+   myOutput = Output;
+   myInput = Input;
+   mySetpoint = Setpoint;
+   inAuto = true;
+
+   uPID::SetOutputLimits(0, 255);	//default output limit corresponds to
+												//the arduino pwm limits
+
+   SampleTime = 100;						//default Controller Sample Time is 0.1 seconds
+
+   uPID::SetControllerDirection(ControllerDirection);
+   uPID::SetTunings(Kp, Ki, Kd);
+   uPID::Initialize();
+
+   lastTime = millis()-SampleTime;
+}
+
+/* Compute() **********************************************************************
+ *     This, as they say, is where the magic happens.  this function should be called
+ *   every time "void loop()" executes.  the function will decide for itself whether a new
+ *   pid Output needs to be computed.  returns true when the output is computed,
+ *   false when nothing has been done.
+ Operation:
+ **********************************************************************************/
+bool uPID::Compute(bool pOnE, long FeedForwardTerm)
+{
+   //UNUSED(pOnE);
+   if(!inAuto) return false;
+   unsigned long now = millis();
+   unsigned long timeChange = (now - lastTime);
+   if(timeChange >= SampleTime)
+   {
+      /*Compute all the working error variables*/
+      history[0] = (*mySetpoint - *myInput);
+      int64_t out = lastOut;
+      out += (coefficients[0] * history[0]);
+      out += (coefficients[1] * history[1]);
+      out += (coefficients[2] * history[2]);
+      lastOut = out;
+
+      int32_t intOut = out >> uPID_SHIFTS;
+      intOut += FeedForwardTerm;
+
+      if(intOut > outMax) { intOut = outMax; }
+      else if(intOut < outMin) { intOut = outMin; }
+
+      /*Remember some variables for next time*/
+      history[2] = history[1];
+      history[1] = history[0];
+
+      *myOutput = intOut;
+      lastTime = now;
+      return true;
+   }
+   else return false;
+}
+
+/* ComputeNow() **********************************************************************
+ *     This, as they say, is where the magic happens.  this function should be called
+ *   every time Output needs to be computed.  returns true
+ Operation:
+ **********************************************************************************/
+bool uPID::ComputeNow(bool pOnE, long FeedForwardTerm)
+{
+   /*Compute all the working error variables*/
+   history[0] = (*mySetpoint - *myInput);
+   int64_t out = lastOut;
+   out += (coefficients[0] * history[0]);
+   out += (coefficients[1] * history[1]);
+   out += (coefficients[2] * history[2]);
+   lastOut = out;
+
+   int32_t intOut = out >> uPID_SHIFTS;
+   intOut += FeedForwardTerm;
+
+   if(intOut > outMax) { intOut = outMax; }
+   else if(intOut < outMin) { intOut = outMin; }
+
+   /*Remember some variables for next time*/
+   history[2] = history[1];
+   history[1] = history[0];
+
+   *myOutput = intOut;
+   lastTime = millis();
+   return true;
+}
+
+/* SetTunings(...)*************************************************************
+ * This function allows the controller's dynamic performance to be adjusted.
+ * it's called automatically from the constructor, but tunings can also
+ * be adjusted on the fly during normal operation
+ ******************************************************************************/
+void uPID::SetTunings(long Kp, long Ki, long Kd)
+{
+   coefficients[0] = Kp + Ki + Kd;
+   coefficients[1] = -(Kp + 2 * Kd);
+   coefficients[2] = Kd;
+   if(controllerDirection == REVERSE)
+   {
+      coefficients[0] = (0 - coefficients[0]);
+      coefficients[1] = (0 - coefficients[1]);
+      coefficients[2] = (0 - coefficients[2]);
+   }
+}
+
+/* SetTunings(...)*************************************************************
+ * This function allows the controller's dynamic performance to be adjusted.
+ * it's called automatically from the constructor, but tunings can also
+ * be adjusted on the fly during normal operation
+ ******************************************************************************/
+void uPID::SetTunings(byte Kp, byte Ki, byte Kd)
+{
+   long longKp = (long)Kp << 5; //32 is 1.0 in byte mode
+   long longKi = (long)Ki << 5; //32 is 1.0 in byte mode
+   long longKd = (long)Kd << 3; //32 is 1.0 in byte mode
+
+   coefficients[0] = longKp + longKi + longKd;
+   coefficients[1] = -(longKp + 2 * longKd);
+   coefficients[2] = longKd;
+   if(controllerDirection == REVERSE)
+   {
+      coefficients[0] = (0 - coefficients[0]);
+      coefficients[1] = (0 - coefficients[1]);
+      coefficients[2] = (0 - coefficients[2]);
+   }
+}
+
+/* SetSampleTime(...) *********************************************************
+ * sets the period, in Milliseconds, at which the calculation is performed
+ ******************************************************************************/
+void uPID::SetSampleTime(int NewSampleTime)
+{
+   if (NewSampleTime > 0)
+   {
+      SampleTime = (unsigned long)NewSampleTime;
+   }
+}
+
+/* SetOutputLimits(...)****************************************************
+ *     This function will be used far more often than SetInputLimits.  while
+ *  the input to the controller will generally be in the 0-1023 range (which is
+ *  the default already,)  the output will be a little different.  maybe they'll
+ *  be doing a time window and will need 0-8000 or something.  or maybe they'll
+ *  want to clamp it from 0-125.  who knows.  at any rate, that can all be done
+ *  here.
+ **************************************************************************/
+void uPID::SetOutputLimits(long Min, long Max)
+{
+   if(Min >= Max) return;
+   outMin = Min;
+   outMax = Max;
+
+   if(*myOutput > outMax) { *myOutput = outMax; }
+   else if(*myOutput < outMin) { *myOutput = outMin; }
+}
+
+/* SetMode(...)****************************************************************
+ * Allows the controller Mode to be set to manual (0) or Automatic (non-zero)
+ * when the transition from manual to auto occurs, the controller is
+ * automatically initialized
+ ******************************************************************************/
+void uPID::SetMode(byte Mode)
+{
+   bool newAuto = (Mode == AUTOMATIC);
+   if(newAuto == !inAuto)
+   {  /*we just went from manual to auto*/
+      uPID::Initialize();
+   }
+   inAuto = newAuto;
+}
+
+/* Initialize()****************************************************************
+ *	does all the things that need to happen to ensure a bumpless transfer
+ *  from manual to automatic mode.
+ ******************************************************************************/
+void uPID::Initialize()
+{
+   for(byte x; x < 3; x++)
+   {
+      history[x] = 0; //Set all error history to 0
+   }
+   lastOut = 0;
+}
+
+/* SetControllerDirection(...)*************************************************
+ * The PID will either be connected to a DIRECT acting process (+Output leads
+ * to +Input) or a REVERSE acting process(+Output leads to -Input.)  we need to
+ * know which one, because otherwise we may increase the output when we should
+ * be decreasing.  This is called from the constructor.
+ ******************************************************************************/
+void uPID::SetControllerDirection(byte Direction)
+{
+   if( inAuto && (Direction != controllerDirection) )
+   {
+      coefficients[0] = (0 - coefficients[0]);
+      coefficients[1] = (0 - coefficients[1]);
+      coefficients[2] = (0 - coefficients[2]);
+   }
+   controllerDirection = Direction;
+}
+
+/* Status Funcions*************************************************************
+ * Just because you set the Kp=-1 doesn't mean it actually happened.  these
+ * functions query the internal state of the PID.  they're here for display
+ * purposes.  this are the functions the PID Front-end uses for example
+ ******************************************************************************/
+byte uPID::GetMode() { return  AUTOMATIC; }
+byte uPID::GetDirection() { return controllerDirection; }
+void uPID::ResetIntegeral() { uPID::Initialize(); }
+
