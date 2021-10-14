@@ -1319,7 +1319,9 @@ uint16_t PW(int REQ_FUEL, byte VE, long MAP, uint16_t corrections, int injOpen)
     //AE Adds % of req_fuel
     if ( configPage2.aeApplyMode == AE_MODE_ADDER )
     {
-      intermediate += ( ((unsigned long)REQ_FUEL) * (currentStatus.AEamount - 100) ) / 100;
+      unsigned long flexReqFuel = (unsigned long)REQ_FUEL;
+      if( currentStatus.flexCorrection != 100 ) { flexReqFuel = (flexReqFuel * currentStatus.flexCorrection) / 100; }
+      intermediate += ( flexReqFuel * (currentStatus.AEamount - 100) ) / 100;
     }
     if ( intermediate > 65535)
     {
