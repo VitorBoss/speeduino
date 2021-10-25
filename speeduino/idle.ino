@@ -707,7 +707,7 @@ void idleControl()
               else { FeedForwardTerm = idle_pid_target_value; }
             }
 
-            PID_computed = idlePID.Compute(true, FeedForwardTerm>>2);
+            PID_computed = idlePID.Compute(true, FeedForwardTerm);
 
             //If DFCO conditions are met keep output from changing
             if( (currentStatus.TPS > configPage2.iacTPSlimit) || lastDFCOValue || onGoingDFCO
