@@ -786,9 +786,9 @@ void updateIdleTarget()
   //Update closed loop idle target
   currentStatus.CLIdleTarget = (byte)table2D_getValue(&iacClosedLoopTable, currentStatus.coolant + CALIBRATION_TEMPERATURE_OFFSET); //All temps are offset by 40 degrees
   idle_cl_target_rpm = (uint16_t)currentStatus.CLIdleTarget * 10; //All temps are offset by 40 degrees
-  if( targetTaper < configPage2.idleTaperTime )
+  if( targetTaper < 15 )
   {
-    idle_cl_target_rpm = map(targetTaper, 0, configPage2.idleTaperTime, ((idle_cl_target_rpm * 143)>>7), idle_cl_target_rpm); //Add 11.7% to target RPM
+    idle_cl_target_rpm = map(targetTaper, 0, 15, ((idle_cl_target_rpm * 143)>>7), idle_cl_target_rpm); //Add 11.7% to target RPM
     //Keep target higher if taper is still counting or RPM is higher than target to avoid PID sink
     if( !BIT_CHECK(currentStatus.status1, BIT_STATUS1_DFCO) //Keep high at DFCO
     && (runSecsX10 >= (uint32_t)configPage2.idleTaperTime)  //Keep high if idle taper time still counting
