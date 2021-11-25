@@ -579,7 +579,6 @@ extern volatile byte HWTest_INJ_50pc; /**< Each bit in this variable represents 
 extern volatile byte HWTest_IGN;      /**< Each bit in this variable represents one of the ignition channels and it's HW test status */
 extern volatile byte HWTest_IGN_50pc; /**< Each bit in this variable represents one of the ignition channels and it's 50% HW test status */
 
-extern volatile uint16_t accEnrichmentPW;
 
 extern byte resetControl; ///< resetControl needs to be here (as global) because using the config page (4) directly can prevent burning the setting
 

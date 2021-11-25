@@ -190,7 +190,6 @@ struct FuelSchedule {
   COMPARE_TYPE nextStartCompare;
   COMPARE_TYPE nextEndCompare;
   volatile bool hasNextSchedule = false;
-  volatile bool accEnrichment = false;
 };
 
 //volatile Schedule *timer3Aqueue[4];

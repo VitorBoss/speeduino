@@ -1317,9 +1317,11 @@ uint16_t PW(int REQ_FUEL, byte VE, long MAP, uint16_t corrections, int injOpen)
     //If intermeditate is not 0, we need to add the opening time (0 typically indicates that one of the full fuel cuts is active)
     intermediate += injOpen; //Add the injector opening time
     //AE Adds % of req_fuel
-    if ( BIT_CHECK(currentStatus.engine, BIT_ENGINE_ACC) && (configPage2.aeApplyMode == AE_MODE_ADDER) )
+    if ( configPage2.aeApplyMode == AE_MODE_ADDER )
     {
-      intermediate += accEnrichmentPW;
+      unsigned long flexReqFuel = (unsigned long)REQ_FUEL;
+      if( currentStatus.flexCorrection != 100 ) { flexReqFuel = (flexReqFuel * currentStatus.flexCorrection) / 100; }
+      intermediate += ( flexReqFuel * (currentStatus.AEamount - 100) ) / 100;
     }
     if ( intermediate > 65535)
     {

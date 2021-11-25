@@ -43,7 +43,6 @@ int TPS_rateOfChange;
 byte activateMAPDOT; //The mapDOT value seen when the MAE was activated. 
 byte activateTPSDOT; //The tpsDOT value seen when the MAE was activated.
 
-bool idleAdvActive = false;
 uint16_t AFRnextCycle;
 unsigned long knockStartTime;
 byte lastKnockCount;
@@ -471,17 +470,6 @@ uint16_t correctionAccel()
     } //AE Mode
   } //AE active
 
-  if ( (configPage2.aeApplyMode == AE_MODE_ADDER) && (accelValue != 100) )
-  {
-    uint16_t flexReqFuel = req_fuel_uS;
-    uint16_t tempValue;
-    if( currentStatus.flexCorrection != 100 ) { flexReqFuel = (flexReqFuel * currentStatus.flexCorrection) / 100; }
-    tempValue = ( flexReqFuel * (accelValue - 100) ) / 100;
-    noInterrupts();
-    accEnrichmentPW = tempValue;
-    interrupts();
-  }
-
   return accelValue;
 }
 
@@ -822,9 +810,6 @@ int8_t correctionIdleAdvance(int8_t advance)
     }
     else { idleAdvTaper = 0; }
   }
-  if ( !idleAdvActive && BIT_CHECK(currentStatus.engine, BIT_ENGINE_RUN) && (currentStatus.RPM > (((uint16_t)currentStatus.CLIdleTarget * 10) - (uint16_t)200)) ) { idleAdvActive = true; } //Active only after the engine is 200 RPM below target on first time
-  else if (idleAdvActive && !BIT_CHECK(currentStatus.engine, BIT_ENGINE_RUN)) { idleAdvActive = false; } //Clear flag if engine isn't running anymore
-
   return ignIdleValue;
 }
 /** Ignition soft revlimit correction.
