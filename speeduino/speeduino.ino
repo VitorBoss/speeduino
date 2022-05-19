@@ -321,6 +321,7 @@ void loop()
       #endif
       readO2();
       readO2_2();
+      readBat();
 
       #ifdef SD_LOGGING
         if(configPage13.onboard_log_file_rate == LOGGER_RATE_30HZ) { writeSDLogEntry(); }
@@ -335,7 +336,6 @@ void loop()
       //The IAT and CLT readings can be done less frequently (4 times per second)
       readCLT();
       readIAT();
-      readBat();
       nitrousControl();
 
       //Lookup the current target idle RPM. This is aligned with coolant and so needs to be calculated at the same rate CLT is read
