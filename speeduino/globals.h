@@ -166,6 +166,8 @@
 #define LOAD_SOURCE_MAP         0
 #define LOAD_SOURCE_TPS         1
 #define LOAD_SOURCE_IMAPEMAP    2
+#define LOAD_SOURCE_VVT1        3
+#define LOAD_SOURCE_VVT2        4
 
 //Define bit positions within engine variable
 #define BIT_ENGINE_RUN      0   // Engine running

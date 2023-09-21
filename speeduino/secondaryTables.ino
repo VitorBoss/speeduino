@@ -183,6 +183,14 @@ byte getVE2()
     //IMAP / EMAP
     currentStatus.fuelLoad2 = (currentStatus.MAP * 100) / currentStatus.EMAP;
   }
+  else if (configPage10.fuel2Algorithm == LOAD_SOURCE_VVT1)
+  {
+    currentStatus.fuelLoad2 = currentStatus.vvt1Angle * 2;
+  }
+  else if (configPage10.fuel2Algorithm == LOAD_SOURCE_VVT2)
+  {
+    currentStatus.fuelLoad2 = currentStatus.vvt2Angle * 2;
+  }
   else { currentStatus.fuelLoad2 = currentStatus.MAP; } //Fallback position
   tempVE = get3DTableValue(&fuelTable2, currentStatus.fuelLoad2, currentStatus.RPM); //Perform lookup into fuel map for RPM vs MAP value
 
@@ -206,12 +214,19 @@ byte getAdvance2()
   {
     //Alpha-N
     currentStatus.ignLoad2 = currentStatus.TPS * 2;
-
   }
   else if (configPage10.spark2Algorithm == LOAD_SOURCE_IMAPEMAP)
   {
     //IMAP / EMAP
     currentStatus.ignLoad2 = (currentStatus.MAP * 100) / currentStatus.EMAP;
+  }
+  else if(configPage10.spark2Algorithm == LOAD_SOURCE_VVT1)
+  {
+    currentStatus.ignLoad2 = currentStatus.vvt1Angle * 2;
+  }
+  else if(configPage10.spark2Algorithm == LOAD_SOURCE_VVT2)
+  {
+    currentStatus.ignLoad2 = currentStatus.vvt2Angle * 2;
   }
   else { currentStatus.ignLoad2 = currentStatus.MAP; }
   tempAdvance = get3DTableValue(&ignitionTable2, currentStatus.ignLoad2, currentStatus.RPM) - OFFSET_IGNITION; //As above, but for ignition advance
